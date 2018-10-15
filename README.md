@@ -359,3 +359,18 @@ public void onUnregisterDeviceError(String deviceID, String message, String caus
 	System.out.println(message+". "+cause);
 }
 ```
+
+### onChangeSetting
+
+**onChangeSetting** is invoked when server change the client settings. Application can get information about the change of settings.
+
+public void onChangeSetting(String name, String type, Object value)
+{
+	// TODO: Add your code here when setting was changed
+	/**
+	 * The name of setting can be:
+	 * 1. timeout
+	 * 2. delayReconnect
+	 * 3. delayRestart
+	 */
+}
