@@ -8,6 +8,10 @@ The notification server can be part of the application server and can also be pr
 
 The application server must know the device ID of each user. When the application server sends notifications to users, the application server sends notifications to the notification server that is addressed to the user's device.
 
+## Push Notification Server
+
+To get push notification server, please click https://github.com/kamshory/PushNotificationServer
+
 **Notification Flow**
 1. Every device that will receive notifications must register the device ID either manually by the user or automatically when the application is first run.
 2. Each notification will be sent to the device according to the destination device ID that has been registered previously according to the API key of the notification.
