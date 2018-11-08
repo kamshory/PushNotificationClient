@@ -11,6 +11,8 @@ The application server must know the device ID of each user. When the applicatio
 ## Push Notification Server
 
 To get push notification server, please click https://github.com/kamshory/PushNotificationServer
+To get push notification sender, please click https://github.com/kamshory/PushNotificationSender
+
 
 **Notification Flow**
 1. Every device that will receive notifications must register the device ID either manually by the user or automatically when the application is first run.
