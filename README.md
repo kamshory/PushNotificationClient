@@ -411,7 +411,7 @@ public class Application
 		String appServerAddress = "sias.example.com";
 		String loginContext = "/api/1.0.0/push/login/";
 		String registrationContext = "/api/1.0.0/push/resgitration/";
-		String userID = "081311193293";
+		String userID = "081311111111";
 		String userPassword = "f6ae23a2";
 		String userGroup = "W";	
 		/**
