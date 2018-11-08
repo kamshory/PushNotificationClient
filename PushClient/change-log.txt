@@ -1,0 +1,17 @@
+Version     : 1.0.1
+Revision    : 1
+Change Date : 5 November 2018
+Change Log  :
+ 1. Replace class HTTPIO to HTTPClient 
+ 2. Adding HTTPClient for HTTP and HTTPS access capability
+ 3. HTTPClient.get, HTTPClient.post, HTTPClient.head
+    Throws IOException, MalformedURLException on GET, POST and HEAD
+ 4. RemoteMessage.buildNotification
+    Catch invalid URL syntax  
+ 5. Change AsyncNotif.registerDeviceApps, AsyncNotif.auth, AsyncNotif.login, AsyncNotif.logout, 
+    Notification.registerDeviceApps, Notification.auth, Notification.login, Notification.logout
+    Replace 3 first parameter: String serverAddress, String serverPort, String serverContent
+    with String url
+ 6. Adding ServerResponse.responseCode   
+ 7. Adding onDataSent event. This is useful to debug the API
+=================================================================================

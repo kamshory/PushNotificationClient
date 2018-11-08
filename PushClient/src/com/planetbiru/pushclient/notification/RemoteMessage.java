@@ -4,17 +4,19 @@ import java.lang.reflect.Field;
 import java.net.URI;
 import java.net.URISyntaxException;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import com.planetbiru.pushclient.config.Config;
-import com.planetbiru.pushclient.util.Utility;
+import com.planetbiru.pushclient.utility.Utility;
 
 /**
  * RemoteMessage
  * @author Kamshory, S.T,M.T.
  *
  */
-public class RemoteMessage {
+public class RemoteMessage 
+{
 	/**
 	 * Notification
 	 */
@@ -23,7 +25,10 @@ public class RemoteMessage {
 	 * Content type
 	 */
 	public String contentType = "";
-	JSONObject messageRaw = new JSONObject();
+	/**
+	 * Raw message
+	 */
+	JSONObject rawMessage = new JSONObject();
 	/**
 	 * Default constructor
 	 */
@@ -32,13 +37,19 @@ public class RemoteMessage {
 	}
 	/**
 	 * Constructor with content type
-	 * @param messageType
+	 * @param messageType Message type
 	 */
 	public RemoteMessage(String messageType)
 	{
 		this.contentType = messageType;
 	}
-	public RemoteMessage(String messageType, JSONObject data)
+	/**
+	 * Constructor with content type and data
+	 * @param messageType Content type
+	 * @param data JSONObject sent by server
+	 * @throws JSONException if any JSON errors
+	 */
+	public RemoteMessage(String messageType, JSONObject data) throws JSONException
 	{
 		this.contentType = messageType;
 		this.buildNotification(data);
@@ -61,23 +72,29 @@ public class RemoteMessage {
 	}
 	/**
 	 * Get message ID
-	 * @return
+	 * @return Message ID
 	 */
 	public String getMessageId()
 	{
 		return this.notification.id ;
 	}
+	/**
+	 * Get raw message
+	 * @return Raw message
+	 */
 	public JSONObject getMessageRaw()
 	{
-		return this.messageRaw;
+		return this.rawMessage;
 	}
 	/**
 	 * Build notification
 	 * @param data Notification
+	 * @throws JSONException
+	 * @throws URISyntaxException 
 	 */
-	private void buildNotification(JSONObject data)
+	private void buildNotification(JSONObject data) throws JSONException
 	{
-		this.messageRaw = new JSONObject(data.toString());
+		this.rawMessage = new JSONObject(data.toString());
 		this.notification = new Notification();
 		this.notification.id = data.optString("id", "");
 		this.notification.type = data.optString("type", "");
@@ -102,10 +119,6 @@ public class RemoteMessage {
 		} 
 		catch (URISyntaxException e) 
 		{
-			if(Config.debugMode)
-			{
-				e.printStackTrace();
-			}
 			try 
 			{
 				this.notification.uri = new URI("");
@@ -122,7 +135,6 @@ public class RemoteMessage {
 	/**
 	 * Notification
 	 * @author Kamshory, S.T,M.T.
-	 *
 	 */
 	public class Notification 
 	{
@@ -162,9 +174,6 @@ public class RemoteMessage {
 		 * The body of the message
 		 */
 		public String body = "";
-		
-		public String[] bodyLocalizationArgs;
-		public String bodyLocalizationKey = "";
 		/**
 		 * Action doing when user click the notification
 		 */
@@ -193,8 +202,6 @@ public class RemoteMessage {
 		 * Title of the notification
 		 */
 		public String title = "";
-		public String[] titleLocalizationArgs;
-		public String titleLocalizationKey = "";
 		/**
 		 * Message ID
 		 */
@@ -209,19 +216,11 @@ public class RemoteMessage {
 		public int timeZone = 0;
 		/**
 		 * Get body
-		 * @return
+		 * @return Body of remote message
 		 */
 		public String getBody()
 		{
 			return this.body;
-		}
-		public String[] getBodyLocalizationArgs()
-		{
-			return this.bodyLocalizationArgs;
-		}
-		public String getBodyLocalizationKey()
-		{
-			return this.bodyLocalizationKey;
 		}
 		/**
 		 * Get click action
@@ -342,14 +341,6 @@ public class RemoteMessage {
 		public String getMiscData()
 		{
 			return this.miscData;
-		}
-		public String[] getTitleLocalizationArgs()
-		{
-			return this.titleLocalizationArgs;
-		}
-		public String getTitleLocalizationKey()
-		{
-			return this.titleLocalizationKey;
 		}
 		public String toString()
 		{

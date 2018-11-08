@@ -48,7 +48,7 @@ public class XML {
     /** The Character '='. */
     public static final Character EQ = '=';
 
-    /** The Character '>'. */
+    /** The Character '&gt;'. */
     public static final Character GT = '>';
 
     /** The Character '&lt;'. */
@@ -107,11 +107,11 @@ public class XML {
      * Replace special characters with XML escapes:
      * 
      * <pre>
-     * &amp; <small>(ampersand)</small> is replaced by &amp;amp;
-     * &lt; <small>(less than)</small> is replaced by &amp;lt;
-     * &gt; <small>(greater than)</small> is replaced by &amp;gt;
-     * &quot; <small>(double quote)</small> is replaced by &amp;quot;
-     * &apos; <small>(single quote / apostrophe)</small> is replaced by &amp;apos;
+     * &amp; <span style="font-size: small;">(ampersand)</span> is replaced by &amp;amp;
+     * &lt; <span style="font-size: small;">(less than)</span> is replaced by &amp;lt;
+     * &gt; <span style="font-size: small;">(greater than)</span> is replaced by &amp;gt;
+     * &quot; <span style="font-size: small;">(double quote)</span> is replaced by &amp;quot;
+     * ' <span style="font-size: small;">(single quote / apostrophe)</span> is replaced by &amp;apos;
      * </pre>
      * 
      * @param string
@@ -213,7 +213,7 @@ public class XML {
      * 
      * @param string
      *            A string.
-     * @throws JSONException Thrown if the string contains whitespace or is empty.
+     * @throws JSONException if any JSON errors Thrown if the string contains whitespace or is empty.
      */
     public static void noSpace(String string) throws JSONException {
         int i, length = string.length();
@@ -238,7 +238,7 @@ public class XML {
      * @param name
      *            The tag name.
      * @return true if the close tag is processed.
-     * @throws JSONException
+     * @throws JSONException if any JSON errors
      */
     private static boolean parse(XMLTokener x, JSONObject context, String name, boolean keepStrings)
             throws JSONException {
@@ -459,13 +459,13 @@ public class XML {
      * name/value pairs and arrays of values. JSON does not does not like to
      * distinguish between elements and attributes. Sequences of similar
      * elements are represented as JSONArrays. Content text may be placed in a
-     * "content" member. Comments, prologs, DTDs, and <code>&lt;[ [ ]]></code>
+     * "content" member. Comments, prologs, DTDs, and <code>&lt;[ [ ]]&gt;</code>
      * are ignored.
      * 
      * @param string
      *            The source string.
      * @return A JSONObject containing the structured data from the XML string.
-     * @throws JSONException Thrown if there is an errors while parsing the string
+     * @throws JSONException if any JSON errors Thrown if there is an errors while parsing the string
      */
     public static JSONObject toJSONObject(String string) throws JSONException {
         return toJSONObject(string, false);
@@ -479,12 +479,12 @@ public class XML {
      * name/value pairs and arrays of values. JSON does not does not like to
      * distinguish between elements and attributes. Sequences of similar
      * elements are represented as JSONArrays. Content text may be placed in a
-     * "content" member. Comments, prologs, DTDs, and <code>&lt;[ [ ]]></code>
+     * "content" member. Comments, prologs, DTDs, and <code>&lt;[ [ ]]&gt;</code>
      * are ignored.
      *
      * @param reader The XML source reader.
      * @return A JSONObject containing the structured data from the XML string.
-     * @throws JSONException Thrown if there is an errors while parsing the string
+     * @throws JSONException if any JSON errors Thrown if there is an errors while parsing the string
      */
     public static JSONObject toJSONObject(Reader reader) throws JSONException {
         return toJSONObject(reader, false);
@@ -498,7 +498,7 @@ public class XML {
      * name/value pairs and arrays of values. JSON does not does not like to
      * distinguish between elements and attributes. Sequences of similar
      * elements are represented as JSONArrays. Content text may be placed in a
-     * "content" member. Comments, prologs, DTDs, and <code>&lt;[ [ ]]></code>
+     * "content" member. Comments, prologs, DTDs, and <code>&lt;[ [ ]]&gt;</code>
      * are ignored.
      *
      * All values are converted as strings, for 1, 01, 29.0 will not be coerced to
@@ -508,7 +508,7 @@ public class XML {
      * @param keepStrings If true, then values will not be coerced into boolean
      *  or numeric values and will instead be left as strings
      * @return A JSONObject containing the structured data from the XML string.
-     * @throws JSONException Thrown if there is an errors while parsing the string
+     * @throws JSONException if any JSON errors Thrown if there is an errors while parsing the string
      */
     public static JSONObject toJSONObject(Reader reader, boolean keepStrings) throws JSONException {
         JSONObject jo = new JSONObject();
@@ -530,7 +530,7 @@ public class XML {
      * name/value pairs and arrays of values. JSON does not does not like to
      * distinguish between elements and attributes. Sequences of similar
      * elements are represented as JSONArrays. Content text may be placed in a
-     * "content" member. Comments, prologs, DTDs, and <code>&lt;[ [ ]]></code>
+     * "content" member. Comments, prologs, DTDs, and <code>&lt;[ [ ]]&gt;</code>
      * are ignored.
      * 
      * All values are converted as strings, for 1, 01, 29.0 will not be coerced to
@@ -541,7 +541,7 @@ public class XML {
      * @param keepStrings If true, then values will not be coerced into boolean
      *  or numeric values and will instead be left as strings
      * @return A JSONObject containing the structured data from the XML string.
-     * @throws JSONException Thrown if there is an errors while parsing the string
+     * @throws JSONException if any JSON errors Thrown if there is an errors while parsing the string
      */
     public static JSONObject toJSONObject(String string, boolean keepStrings) throws JSONException {
         return toJSONObject(new StringReader(string), keepStrings);
@@ -553,7 +553,7 @@ public class XML {
      * @param object
      *            A JSONObject.
      * @return A string.
-     * @throws JSONException Thrown if there is an error parsing the string
+     * @throws JSONException if any JSON errors Thrown if there is an error parsing the string
      */
     public static String toString(Object object) throws JSONException {
         return toString(object, null);
@@ -567,7 +567,7 @@ public class XML {
      * @param tagName
      *            The optional name of the enclosing tag.
      * @return A string.
-     * @throws JSONException Thrown if there is an error parsing the string
+     * @throws JSONException if any JSON errors Thrown if there is an error parsing the string
      */
     public static String toString(final Object object, final String tagName)
             throws JSONException {

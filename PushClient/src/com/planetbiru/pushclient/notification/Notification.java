@@ -4,57 +4,143 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
-import java.net.UnknownHostException;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import com.planetbiru.pushclient.config.Config;
-import com.planetbiru.pushclient.util.SocketIO;
-import com.planetbiru.pushclient.util.Utility;
+import com.planetbiru.pushclient.utility.ConnectionChecker;
+import com.planetbiru.pushclient.utility.HTTPClient;
+import com.planetbiru.pushclient.utility.HTTPResponse;
+import com.planetbiru.pushclient.utility.SocketIO;
+import com.planetbiru.pushclient.utility.Utility;
 
 public class Notification implements Request
 {
+	/**
+	 * Client socket
+	 */
 	public Socket socket = new Socket();
+	/**
+	 * Indicate that process is stopped
+	 */
 	public boolean stoped = false;
+	/**
+	 * Indicate that the client is connected to the server
+	 */
 	public boolean connected = false;
+	/**
+	 * Indicate that the client is connected to the server
+	 */
 	public boolean isConnected = false;
-	
+	/**
+	 * Server port
+	 */
 	private int serverPort = Config.serverPort;
+	/**
+	 * Server address
+	 */
 	private String serverAddress = Config.serverAddress;
-	
+	/**
+	 * Device ID
+	 */
 	public String deviceID = "";
+	/**
+	 * API key
+	 */
 	public String apiKey = "";
+	/**
+	 * Group key
+	 */
+	public String groupKey = "";
+	/**
+	 * Password
+	 */
 	public String password = "";
-	
+	/**
+	 * Indicate that client run in debug mode
+	 */
 	private boolean debugMode = Config.debugMode;
+	/**
+	 * Time out
+	 */
 	private int timeout = Config.timeout;
+	/**
+	 * Count down to reconnect
+	 */
 	private int countDownReconnect = Config.countDownReconnect;
+	/**
+	 * Delay to restart the client
+	 */
 	private long delayRestart = Config.delayRestart;
+	/**
+	 * Delay to reconnect to the server
+	 */
 	private long delayReconnect = Config.delayReconnect;
-
+	/**
+	 * Last error
+	 */
+	private Exception lastError = new Exception();
+	/**
+	 * Connection checker
+	 */
+	private ConnectionChecker connectionChecker = new ConnectionChecker();
+	/**
+	 * Flag to force stop
+	 */
+	private boolean forceStop = false;
+	/**
+	 * Default constructor
+	 */
 	public Notification()
-	{
-		
+	{		
 	}
-	public Notification(String apiKey, String password, String deviceID)
+	/**
+	 * Constructor with initialization
+	 * @param apiKey API key of the push notification
+	 * @param password API password of the push notification
+	 * @param deviceID Device ID
+	 * @param groupKey Group key of the push notification
+	 */
+	public Notification(String apiKey, String password, String deviceID, String groupKey)
 	{
 		this.apiKey = apiKey;
 		this.deviceID = deviceID;
 		this.password = password;
+		this.groupKey = groupKey;
+		Config.apiKey = apiKey;
+		Config.password = password;
+		Config.groupKey = groupKey;
 	}
-	public Notification(String apiKey, String password, String deviceID, String serverAddress, int serverPort)
+	/**
+	 * Constructor with initialization
+	 * @param apiKey API Key
+	 * @param password Password
+	 * @param deviceID Device ID
+	 * @param groupKey Group Key
+	 * @param serverAddress Server address
+	 * @param serverPort Server port
+	 */
+	public Notification(String apiKey, String password, String deviceID, String groupKey, String serverAddress, int serverPort)
 	{
 		this.apiKey = apiKey;
 		this.deviceID = deviceID;
 		this.password = password;
+		this.groupKey = groupKey;
+		Config.apiKey = apiKey;
+		Config.password = password;
+		Config.groupKey = groupKey;
 		this.setServerAddress(serverAddress);
 		this.setServerPort(serverPort);
 	}
+	/**
+	 * Start notification client
+	 */
 	public void start()
 	{
 		this.stoped = false;
+		this.forceStop = false;
 		if(!this.isConnected)
 		{
 			this.connect();
@@ -63,14 +149,24 @@ public class Notification implements Request
 		{
 			SocketIO socketIO = new SocketIO(this.socket);
 			boolean success = false;
-			while(!this.stoped)
+			while(!this.stoped && !this.forceStop)
 			{
 				try 
 				{
 					success = socketIO.read();
 					if(success)
 					{
-						this.processMessage(socketIO.getHeaders(), socketIO.getBody());
+						try 
+						{
+							this.processPush(socketIO.getResponseHeaderArray(), socketIO.getBody());
+						} 
+						catch (NotificationException e) 
+						{
+							if(this.debugMode)
+							{
+								e.printStackTrace();
+							}
+						}
 					}
 					else
 					{
@@ -80,7 +176,7 @@ public class Notification implements Request
 				catch (IOException e1) 
 				{
 					this.stoped = true;
-					this.onError(e1);
+					this.sendError(e1);
 					if(this.debugMode)
 					{
 						e1.printStackTrace();
@@ -88,8 +184,14 @@ public class Notification implements Request
 				}			
 			}
 		}
-		this.restart();
+		if(!this.forceStop)
+		{
+			this.restart();
+		}
 	}
+	/**
+	 * Restart notification client 
+	 */
 	private void restart()
 	{
 		this.stop();
@@ -101,17 +203,17 @@ public class Notification implements Request
 		} 
 		catch (InterruptedException e) 
 		{
-			this.onError(e);
-			if(this.debugMode)
-			{
-				e.printStackTrace();
-			}
+			this.sendError(e);
 		}
 		this.connect();
 		this.start();		
 	}
+	/**
+	 * Stop notification client
+	 */
 	public void stop()
 	{
+		this.forceStop = true;
 		this.stoped = true;
 		try 
 		{
@@ -119,44 +221,40 @@ public class Notification implements Request
 		} 
 		catch (IOException e) 
 		{
-			this.onError(e);
+			this.sendError(e);
 			if(this.debugMode)
 			{
 				e.printStackTrace();
 			}
 		}
 	}
-
-	private boolean createSocket()
+	/**
+	 * Create socket
+	 * @return true if success and false if failed
+	 * @throws IOException 
+	 */
+	private boolean createSocket() throws IOException
 	{
 		SocketAddress socketAddress = new InetSocketAddress(this.getServerAddress() , this.getServerPort());
-		try 
+		this.socket = new Socket();
+		this.socket.connect(socketAddress, this.getTimeout());
+		if(this.socket.isConnected() && !this.socket.isClosed())
 		{
-			this.socket = new Socket();
-			this.socket.connect(socketAddress, this.getTimeout());
-			if(this.socket.isConnected() && !this.socket.isClosed())
-			{
-				this.socket.setKeepAlive(true);
-				this.connected = true;
-				return true;
-			}
-			else
-			{
-				this.connected = false;
-			}
+			this.socket.setKeepAlive(true);
+			this.connected = true;
+			return true;
 		}
-		catch(UnknownHostException e)
+		else
 		{
-			this.onError(e);
-			this.connected = false;			
-		}
-		catch (IOException e) 
-		{
-			this.onError(e);
 			this.connected = false;
 		}
 		return false;
 	}
+	/**
+	 * Reconnect client
+	 * @param countDown Count down
+	 * @return true if success and false if failed
+	 */
 	private boolean reconnect(int countDown)
 	{
 		try 
@@ -165,7 +263,7 @@ public class Notification implements Request
 		} 
 		catch (InterruptedException e) 
 		{
-			this.onError(e);
+			this.sendError(e);
 		}
 		if(countDown > 0)
 		{
@@ -183,11 +281,24 @@ public class Notification implements Request
 			return false;
 		}
 	}
-	public boolean connect(String apiKey)
+	/**
+	 * Connect to notification server
+	 * @param apiKey API key
+	 * @param password API password
+	 * @param groupKey API group key
+	 * @return true if success and false if failed
+	 */
+	public boolean connect(String apiKey, String password, String groupKey)
 	{
 		this.apiKey = apiKey;
+		this.password = password;
+		this.groupKey = groupKey;
 		return this.connect();
 	}
+	/**
+	 * Connect to notification server
+	 * @return true if success and false if failed
+	 */
 	public boolean connect()
 	{
 		if(this.isConnected)
@@ -200,20 +311,33 @@ public class Notification implements Request
 		}
 		else
 		{
-			this.isConnected  = this.createSocket();
+			try 
+			{
+				this.isConnected  = this.createSocket();
+			} 
+			catch (IOException e1) 
+			{
+				if(Config.debugMode)
+				{
+					e1.printStackTrace();
+				}
+			}
 			if(this.isConnected)
 			{
 				long unixTime = Utility.unixTime();
 				String token = Utility.sha1(unixTime+this.apiKey);
 				String hash = Utility.sha1(Utility.sha1(this.password)+"-"+token+"-"+this.apiKey);
+				String groupKey = Utility.urlEncode(this.groupKey);
 				SocketIO socketIO = new SocketIO(this.socket);
 				String data = "";
 				socketIO.resetRequestHeader();
 				socketIO.addRequestHeader("Command", "singin");
-				socketIO.addRequestHeader("Authorization", "key="+this.apiKey+"&token="+token+"&hash="+hash+"&time="+unixTime);
+				socketIO.addRequestHeader("Authorization", "key="+this.apiKey+"&token="+token+"&hash="+hash+"&time="+unixTime+"&group="+groupKey);
 				try 
 				{
 					data = this.createRequest();
+					String[] headers = socketIO.getRequestHeaderArray();
+					this.onDataSent(headers, Utility.getFirst(headers, "Command"), data);
 					this.connected = socketIO.write(data);
 					if(this.connected)
 					{
@@ -221,7 +345,17 @@ public class Notification implements Request
 						success = socketIO.read();
 						if(success)
 						{
-							this.processMessage(socketIO.getHeaders(), socketIO.getBody());
+							try 
+							{
+								this.processPush(socketIO.getResponseHeaderArray(), socketIO.getBody());
+							} 
+							catch (NotificationException e) 
+							{
+								if(Config.debugMode)
+								{
+									e.printStackTrace();
+								}
+							}
 						}
 						else
 						{
@@ -231,7 +365,7 @@ public class Notification implements Request
 				} 
 				catch (IOException e) 
 				{
-					this.onError(e);
+					this.sendError(e);
 					if(this.debugMode)
 					{
 						e.printStackTrace();
@@ -242,10 +376,14 @@ public class Notification implements Request
 			else
 			{
 				return this.reconnect(this.countDownReconnect );
-			}
+			}		
 			return this.isConnected;
 		}
 	}
+	/**
+	 * Disconnect from notification server
+	 * @return true if success and false if failed
+	 */
 	public boolean disconnect()
 	{
 		try 
@@ -255,17 +393,23 @@ public class Notification implements Request
 		} 
 		catch (IOException e) 
 		{
-			this.onError(e);
+			this.sendError(e);
 		}
 		return true;
 	}
-	private void processMessage(String[] headers, String body)
+	/**
+	 * Process incoming data
+	 * @param headers Headers
+	 * @param body Body
+	 * @throws NotificationException 
+	 */
+	private void processPush(String[] headers, String body) throws NotificationException
 	{
 		String command = Utility.getFirst(headers, "Command");
 		this.onDataReceived(headers, command, body);
 		String messageType = Utility.getFirst(headers, "Content-Type");
 		String commandLower = command.toLowerCase().trim();
-		if(commandLower.equals("message"))
+		if(commandLower.equals("notification"))
 		{
 			RemoteMessage remoteMessage = new RemoteMessage();		
 			JSONArray data;
@@ -277,15 +421,16 @@ public class Notification implements Request
 				for(i = 0; i < j; i++)
 				{
 					remoteMessage = new RemoteMessage(messageType, data.getJSONObject(i));	
-					this.onMessageReceived(remoteMessage);
+					this.onNotificationReceived(remoteMessage);
 				}			
 			}
 			catch(JSONException e)
 			{
-				this.onError(e);
+				this.sendError(e);
+				throw new NotificationException("Data must be a valid JSONArray");
 			}
 		}
-		else if(commandLower.equals("delete-message"))
+		else if(commandLower.equals("delete-notification"))
 		{
 			JSONArray data;
 			try
@@ -299,16 +444,13 @@ public class Notification implements Request
 				{
 					jo = data.getJSONObject(i);
 					messageID = jo.optString("id", "");
-					this.onDeletedMessages(messageID);
+					this.onNotificationDeleted(messageID);
 				}
 			}
 			catch(JSONException e)
 			{
-				this.onError(e);
-				if(this.debugMode)
-				{
-					e.printStackTrace();
-				}
+				this.sendError(e);
+				throw new NotificationException("Data must be a valid JSONArray");
 			}
 		}
 		else if(commandLower.equals("token"))
@@ -319,17 +461,20 @@ public class Notification implements Request
 				jo = new JSONObject(body);
 				String token = jo.optString("token", "");
 				String time = jo.optString("time", "");
+				long waitToNext = jo.optLong("waitToNext", 0);
 				int timeZone = jo.getInt("timeZone");
-				this.onNewToken(token);
-				this.onNewToken(token, time, timeZone);
+				this.onNewToken(token, time, waitToNext, timeZone);
+				// If within waitToNext milliseconds the client does not receive the token, the client will reconnect to the server
+				if(Config.recheckConnection && waitToNext > 0)
+				{
+					this.connectionChecker = new ConnectionChecker(this, waitToNext);
+					this.connectionChecker.start();
+				}
 			}
 			catch(JSONException e)
 			{
-				this.onError(e);
-				if(this.debugMode)
-				{
-					e.printStackTrace();
-				}
+				this.sendError(e);
+				throw new NotificationException("Data must be a valid JSONObject");
 			}
 		}
 		else if(commandLower.equals("unregister-device-success"))
@@ -338,17 +483,15 @@ public class Notification implements Request
 			try
 			{
 				jo = new JSONObject(body);
+				int responseCode = jo.optInt("responseCode", 0);
 				String message = jo.optString("message", "");
 				String deviceID = jo.optString("deviceID", "");
-				this.onUnregisterDeviceSuccess(deviceID, message);
+				this.onUnregisterDeviceSuccess(deviceID, responseCode, message);
 			}
 			catch(JSONException e)
 			{
-				this.onError(e);
-				if(this.debugMode)
-				{
-					e.printStackTrace();
-				}
+				this.sendError(e);
+				throw new NotificationException("Data must be a valid JSONObject");
 			}
 		}
 		else if(commandLower.equals("register-device-success"))
@@ -357,17 +500,15 @@ public class Notification implements Request
 			try
 			{
 				jo = new JSONObject(body);
+				int responseCode = jo.optInt("responseCode", 0);
 				String message = jo.optString("message", "");
 				deviceID = jo.optString("deviceID", "");
-				this.onRegisterDeviceSuccess(deviceID, message);
+				this.onRegisterDeviceSuccess(deviceID, responseCode, message);
 			}
 			catch(JSONException e)
-			{
-				this.onError(e);
-				if(this.debugMode)
-				{
-					e.printStackTrace();
-				}
+			{				
+				this.sendError(e);
+				throw new NotificationException("Data must be a valid JSONObject");
 			}
 		}
 		else if(commandLower.equals("register-device-error"))
@@ -376,18 +517,16 @@ public class Notification implements Request
 			try
 			{
 				jo = new JSONObject(body);
+				int responseCode = jo.optInt("responseCode", 0);
 				String message = jo.optString("message", "");
 				String deviceID = jo.optString("deviceID", "");
 				String cause = jo.optString("cause", "");
-				this.onRegisterDeviceError(deviceID, message, cause);
+				this.onRegisterDeviceError(deviceID, responseCode, message, cause);
 			}
 			catch(JSONException e)
 			{
-				this.onError(e);
-				if(this.debugMode)
-				{
-					e.printStackTrace();
-				}
+				this.sendError(e);
+				throw new NotificationException("Data must be a valid JSONObject");
 			}
 		}
 		else if(commandLower.equals("unregister-device-error"))
@@ -396,18 +535,16 @@ public class Notification implements Request
 			try
 			{
 				jo = new JSONObject(body);
+				int responseCode = jo.optInt("responseCode", 0);
 				String message = jo.optString("message", "");
 				String deviceID = jo.optString("deviceID", "");
 				String cause = jo.optString("cause", "");
-				this.onUnregisterDeviceError(deviceID, message, cause);
+				this.onUnregisterDeviceError(deviceID, responseCode, message, cause);
 			}
 			catch(JSONException e)
 			{
-				this.onError(e);
-				if(this.debugMode)
-				{
-					e.printStackTrace();
-				}
+				this.sendError(e);
+				throw new NotificationException("Data must be a valid JSONObject");
 			}
 		}
 		else if(commandLower.equals("setting"))
@@ -471,7 +608,8 @@ public class Notification implements Request
 			}
 			catch(JSONException e)
 			{
-				this.onError(e);
+				this.sendError(e);
+				throw new NotificationException("Data must be a valid JSONArray");
 			}			
 		}
 		else if(commandLower.equals("question"))
@@ -489,14 +627,17 @@ public class Notification implements Request
 			}
 			catch(JSONException e)
 			{
-				this.onError(e);
-				if(this.debugMode)
-				{
-					e.printStackTrace();
-				}
+				this.sendError(e);
+				throw new NotificationException("Data must be a valid JSONObject");
 			}
 		}
 	}
+	/**
+	 * Apply new setting sent from the server
+	 * @param name Setting name
+	 * @param type Data type
+	 * @param value Setting value
+	 */
 	private void applySetting(String name, String type, Object value) 
 	{
 		if(name.equals("delayRestart"))
@@ -512,6 +653,11 @@ public class Notification implements Request
 			this.timeout = (int) value;
 		}
 	}
+	/**
+	 * Answer the question sent from the server 
+	 * @param deviceID Device ID
+	 * @param question Question
+	 */
 	private void answerQuestion(String deviceID, String question) 
 	{
 		String hashPassword = Utility.sha1(this.password);
@@ -527,12 +673,19 @@ public class Notification implements Request
 			data.put("answer", answer);
 			data.put("question", question);
 			String data2sent = data.toString();
+			String[] headers = socketIO.getRequestHeaderArray();
+			this.onDataSent(headers, Utility.getFirst(headers, "Command"), data2sent);
 			socketIO.write(data2sent);
 		}
 		catch(IOException e)
 		{
+			this.sendError(e);
 		}
 	}
+	/**
+	 * Create request
+	 * @return Request to the notification server
+	 */
 	private String createRequest()
 	{
 		JSONObject jo = new JSONObject();
@@ -544,11 +697,16 @@ public class Notification implements Request
 		} 
 		catch (JSONException e)
 		{
-			this.onError(e);
+			this.sendError(e);
 		}
 		result = jo.toString();
 		return result;
 	}
+	/**
+	 * Register device
+	 * @param deviceID Device ID
+	 * @return true if success and false if failed
+	 */
 	public boolean registerDevice(String deviceID)
 	{
 		if(!this.isConnected)
@@ -567,6 +725,8 @@ public class Notification implements Request
 				JSONObject data = new JSONObject();
 				data.put("deviceID", deviceID);
 				success = socketIO.write(data.toString());
+				String[] headers = socketIO.getRequestHeaderArray();
+				this.onDataSent(headers, Utility.getFirst(headers, "Command"), data.toString());
 				if(success)
 				{
 					this.onRegisterDeviceSendSuccess(deviceID, "Data sent to notification server");
@@ -581,7 +741,7 @@ public class Notification implements Request
 			catch (IOException e) 
 			{
 				this.onRegisterDeviceSendError(deviceID, "Failed", e.getMessage());
-				this.onError(e);
+				this.sendError(e);
 				if(this.debugMode)
 				{
 					e.printStackTrace();
@@ -592,7 +752,7 @@ public class Notification implements Request
 				} 
 				catch (IOException e1) 
 				{
-					this.onError(e1);
+					this.sendError(e1);
 					if(this.debugMode)
 					{
 						e1.printStackTrace();
@@ -607,7 +767,13 @@ public class Notification implements Request
 			return false;
 		}
 	}
-	public boolean unregisterDevice(String device_id) throws IOException
+	/**
+	 * Unregister device
+	 * @param deviceID Device ID
+	 * @return true if success and false if failed
+	 * @throws IOException if any IO errors
+	 */
+	public boolean unregisterDevice(String deviceID) throws IOException
 	{
 		if(!this.isConnected)
 		{
@@ -624,22 +790,24 @@ public class Notification implements Request
 			{
 				JSONObject data = new JSONObject();
 				data.put("deviceID", deviceID);
+				String[] headers = socketIO.getRequestHeaderArray();
+				this.onDataSent(headers, Utility.getFirst(headers, "Command"), data.toString());
 				success = socketIO.write(data.toString());
 				if(success)
 				{
-					this.onUnregisterDeviceSuccess(deviceID, "Data sent to notification server");
+					this.onUnregisterDeviceSendSuccess(deviceID, "Data sent to notification server");
 					return true;
 				}
 				else
 				{
-					this.onUnregisterDeviceError(deviceID, "Failed", "Data not sent to notification server");
+					this.onUnregisterDeviceSendError(deviceID, "Failed", "Data not sent to notification server");
 					return false;
 				}
 			} 
 			catch (IOException e) 
 			{
-				this.onUnregisterDeviceError(deviceID, "Failed", e.getMessage());
-				this.onError(e);
+				this.onUnregisterDeviceSendError(deviceID, "Failed", e.getMessage());
+				this.sendError(e);
 				if(this.debugMode)
 				{
 					e.printStackTrace();
@@ -650,7 +818,7 @@ public class Notification implements Request
 				} 
 				catch (IOException e1) 
 				{
-					this.onError(e1);
+					this.sendError(e1);
 					if(this.debugMode)
 					{
 						e1.printStackTrace();
@@ -661,31 +829,280 @@ public class Notification implements Request
 		}
 		else
 		{
-			this.onUnregisterDeviceError(deviceID, "Failed", "Not connected");
+			this.onUnregisterDeviceSendError(deviceID, "Failed", "Not connected");
 			return false;
 		}
 	}
+	/**
+	 * Register device ID and user ID to application server
+	 * @param url URL of the application server
+	 * @param cookie Cookie
+	 * @param deviceID Device ID
+	 * @param userID User ID
+	 * @param password User password
+	 * @param group User group
+	 * @return HTTPResponse contains server response
+	 */
+	public HTTPResponse registerDeviceApps(String url, String deviceID, String cookie, String userID, String password, String group) 
+	{
+		String postData = "";
+		postData += "device_id="+Utility.urlEncode(deviceID)+"&";
+		if(userID.length() > 0)
+		{
+			postData += "user_id="+Utility.urlEncode(userID)+"&";
+		}
+		if(password.length() > 0)
+		{
+			postData += "password="+Utility.sha1(password)+"&";
+		}
+		if(group.length() > 0)
+		{
+			postData += "group="+Utility.urlEncode(group)+"&";
+		}
+		postData += "action=register";
+		HTTPResponse response = new HTTPResponse();
+		HTTPClient httpClient = new HTTPClient();
+		try 
+		{
+			response = httpClient.post(url, postData, cookie);
+		} 
+		catch (IOException e) 
+		{
+			this.sendError(e);
+		}
+		return response;
+	}
+	/**
+	 * Unregister device ID and user ID to application server
+	 * @param url URL of the application server
+	 * @param cookie Cookie
+	 * @param deviceID Device ID
+	 * @param userID User ID
+	 * @param password User password
+	 * @param group User group
+	 * @return HTTPResponse contains server response
+	 */
+	public HTTPResponse unregisterDeviceApps(String url, String cookie, String group, String userID, String password, String deviceID) 
+	{
+		String postData = "";
+		postData += "device_id="+Utility.urlEncode(deviceID)+"&";
+		postData += "user_id="+Utility.urlEncode(userID)+"&";
+		postData += "password="+Utility.sha1(password)+"&";
+		postData += "group="+Utility.urlEncode(group)+"&";
+		postData += "action=unregister";
+		HTTPResponse response = new HTTPResponse();
+		HTTPClient httpClient = new HTTPClient();
+		try 
+		{
+			response = httpClient.post(url, postData, cookie);
+		} 
+		catch (IOException e) 
+		{
+			this.sendError(e);
+		}
+		return response;
+	}
+	/**
+	 * Check user authentication without user ID, password and group. The server will use session data saved according to cookie from the client.
+	 * @param url URL of the application server
+	 * @param cookie Cookie
+	 * @return HTTPResponse contains header, body and cookie
+	 */
+	public HTTPResponse auth(String url, String cookie) 
+	{
+		String postData = "";
+		postData += "action=login";
+		HTTPResponse response = new HTTPResponse();
+		HTTPClient httpClient = new HTTPClient();
+		try 
+		{
+			response = httpClient.post(url, postData, cookie);
+		} 
+		catch (IOException e) 
+		{
+			this.sendError(e);
+		}	
+		return response;
+	}
+	/**
+	 * Check user authentication with user ID, password and group
+	 * @param url URL of the application server
+	 * @param cookie Cookie
+	 * @param userID User ID
+	 * @param password Password
+	 * @param group Group
+	 * @return HTTPResponse contains header, body and cookie
+	 */
+	public HTTPResponse login(String url, String cookie, String userID, String password, String group) 
+	{
+		String postData = "";
+		postData += "user_id="+Utility.urlEncode(userID)+"&";
+		postData += "password="+Utility.sha1(password)+"&";
+		postData += "group="+Utility.urlEncode(group)+"&";
+		postData += "action=login";
+		HTTPResponse response = new HTTPResponse();
+		HTTPClient httpClient = new HTTPClient();
+		try 
+		{
+			response = httpClient.post(url, postData, cookie);
+		} 
+		catch (IOException e) 
+		{
+			this.sendError(e);
+		}	
+		return response;
+	}
+	/**
+	 * Logout by destroying session data on the server
+	 * @param url URL of the application server
+	 * @param cookie Cookie
+	 * @return HTTPResponse contains header, body and cookie
+	 */
+	public HTTPResponse logout(String url, String cookie) 
+	{
+		String postData = "";
+		postData += "action=logout";
+		HTTPResponse response = new HTTPResponse();
+		HTTPClient httpClient = new HTTPClient();
+		try 
+		{
+			response = httpClient.post(url, postData, cookie);
+		} 
+		catch (IOException e) 
+		{
+			this.sendError(e);
+		}	
+		return response;
+	}
+	/**
+	 * Get last error
+	 * @return Last exception sent via sendError
+	 */
+	public Exception getLastError()
+	{
+		return this.lastError;
+	}
+	/**
+	 * Send error
+	 * @param exception Exception
+	 */
+	private void sendError(Exception exception)
+	{
+		this.lastError = exception;
+		this.onError(exception);
+	}
+	/**
+	 * Get server address
+	 * @return Server address
+	 */
+	public String getServerAddress() 
+	{
+		return this.serverAddress;
+	}
+	/*
+	 * Set server address
+	 */
+	public void setServerAddress(String serverAddress) 
+	{
+		this.serverAddress = serverAddress;
+	}
+	/**
+	 * Get server port
+	 * @return Server port
+	 */
+	public int getServerPort() 
+	{
+		return this.serverPort;
+	}
+	/**
+	 * Set server port
+	 * @param serverPort Server port
+	 */
+	public void setServerPort(int serverPort) 
+	{
+		this.serverPort = serverPort;
+	}
+	/**
+	 * Get delay to restart the client
+	 * @return Delay to restart the client
+	 */
+	public long getDelayRestart() 
+	{
+		return this.delayRestart;
+	}
+	/**
+	 * Set delay to restart the client
+	 * @param delayRestart Delay to restart the client
+	 */
+	public void setDelayRestart(int delayRestart) 
+	{
+		this.delayRestart = delayRestart;
+	}
+	/**
+	 * Get delay to reconnect to the server
+	 * @return Delay to reconnect to the server
+	 */
+	public long getDelayReconnect() 
+	{
+		return this.delayReconnect;
+	}
+	/**
+	 * Set delay to reconnect to the server
+	 * @param delayReconnect Delay to reconnect to the server
+	 */
+	public void setDelayReconnect(int delayReconnect) 
+	{
+		this.delayReconnect = delayReconnect;
+	}
+	/**
+	 * Get time out
+	 * @return Time out
+	 */
+	public int getTimeout() 
+	{
+		return timeout;
+	}
+	/**
+	 * Set time out
+	 * @param timeout Time out
+	 */
+	public void setTimeout(int timeout) 
+	{
+		this.timeout = timeout;
+	}
+	/**
+	 * Set API to run on debug mode
+	 * @param debugMode Debug mode
+	 */
 	public void setDebugMode(boolean debugMode)
 	{
 		this.debugMode = debugMode;
 	}
+	public void onNotificationReceived(RemoteMessage notification)
+	{	
+		
+	}
+	public void onNotificationDeleted(String notificationID)
+	{		
+		
+	}
 	public void onMessageReceived(RemoteMessage message)
 	{	
+		
+	}
+	public void onMessageDeleted(String messageID)
+	{		
 		
 	}
 	public void onDataReceived(String[] headers, String command, String body)
 	{
 		
 	}
-	public void onDeletedMessages(String msgId)
-	{		
-		
-	}
-	public void onNewToken(String token)
+	public void onDataSent(String[] headers, String command, String body)
 	{
 		
 	}
-	public void onNewToken(String token, String time, int timeZone)
+	public void onNewToken(String token, String time, long waitToNext, int timeZone)
 	{
 		
 	}
@@ -713,62 +1130,20 @@ public class Notification implements Request
 	{
 		
 	}
-
-	public void onRegisterDeviceSuccess(String deviceID, String message)
+	public void onRegisterDeviceSuccess(String deviceID, int responseCode, String message)
 	{
 		
 	}
-	public void onRegisterDeviceError(String deviceID, String message, String cause)
+	public void onRegisterDeviceError(String deviceID, int responseCode, String message, String cause)
 	{
 		
 	}
-	public void onUnregisterDeviceSuccess(String deviceID, String message)
+	public void onUnregisterDeviceSuccess(String deviceID, int responseCode, String message)
 	{
 		
 	}
-	public void onUnregisterDeviceError(String deviceID, String message, String cause)
+	public void onUnregisterDeviceError(String deviceID, int responseCode, String message, String cause)
 	{
 		
 	}
-	public String getServerAddress() 
-	{
-		return this.serverAddress;
-	}
-	public void setServerAddress(String serverAddress) 
-	{
-		this.serverAddress = serverAddress;
-	}
-	public int getServerPort() 
-	{
-		return this.serverPort;
-	}
-	public void setServerPort(int serverPort) 
-	{
-		this.serverPort = serverPort;
-	}
-	public long getDelayRestart() 
-	{
-		return this.delayRestart;
-	}
-	public void setDelayRestart(int delayRestart) 
-	{
-		this.delayRestart = delayRestart;
-	}
-	public long getDelayReconnect() 
-	{
-		return this.delayReconnect;
-	}
-	public void setDelayReconnect(int delayReconnect) 
-	{
-		this.delayReconnect = delayReconnect;
-	}
-	public int getTimeout() 
-	{
-		return timeout;
-	}
-	public void setTimeout(int timeout) 
-	{
-		this.timeout = timeout;
-	}
-
 }

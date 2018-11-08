@@ -1,5 +1,10 @@
 package com.planetbiru.pushclient.config;
 
+/**
+ * Config
+ * @author Kamshory, MT
+ *
+ */
 public class Config {
 	/**
 	 * Server address. Change this address according to production server address
@@ -17,6 +22,10 @@ public class Config {
 	 * API Key. Change this key with your own key
 	 */
 	public static String apiKey = "THE-API-KEY";
+	/**
+	 * Group key
+	 */
+	public static String groupKey = "THE-GROUP-KEY";
 	/**
 	 * API Password
 	 */
@@ -36,5 +45,13 @@ public class Config {
 	/**
 	 * Debug mode
 	 */
-	public static boolean debugMode = false;
+	public static boolean debugMode = true;
+	/**
+	 * Re check connection
+	 */
+	public static boolean recheckConnection = false;
+	/**
+	 * User agent
+	 */
+	public static String userAgent = "Push-Notification-Client version 1.0.0";
 }
