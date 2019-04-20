@@ -90,22 +90,6 @@ public class AsyncNotif extends Thread
 	 * @param serverPort Server port of the push notification
 	 * @param timeout Timeout of the push notification
 	 */
-	public AsyncNotif(String apiKey, String password, String deviceID, String groupKey, String serverAddress, int serverPort, int timeout)
-	{
-		this.notif = new Notif(apiKey, password, deviceID, groupKey, serverAddress, serverPort);
-		this.notif.setTimeout(timeout);
-		this.notif.connect();
-	}
-	/**
-	 * Constructor
-	 * @param apiKey API key of the push notification
-	 * @param password API password of the push notification
-	 * @param deviceID Device ID
-	 * @param groupKey Group key of the push notification
-	 * @param serverAddress Server address of the push notification
-	 * @param serverPort Server port of the push notification
-	 * @param timeout Timeout of the push notification
-	 */
 	public AsyncNotif(String apiKey, String password, String deviceID, String groupKey, String serverAddress, int serverPort, boolean ssl, int timeout)
 	{
 		this.notif = new Notif(apiKey, password, deviceID, groupKey, serverAddress, serverPort, ssl);
