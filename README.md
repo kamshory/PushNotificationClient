@@ -398,10 +398,11 @@ public class Application
 
 		// For notification
 		String pushServerAddress = "push.example.com";
-		int pushServerPort = 92;
+		int pushServerPort = 93;
 		String apiKey = "PLANETBIRU";
 		String apiPassword = "123456";
 		String groupKey = "1234567890W";
+		boolean ssl = true;
 		/**
 		 * Group Key adalah kombinasi antara NPSN+Kode grup pengguna
 		 * NPSN+W => Wali
@@ -423,7 +424,7 @@ public class Application
 
 		System.out.println("Asynchronous notification");	
 		System.out.println("Here your code before start notification!");	
-		AsyncNotif asyncNotif = new AsyncNotif(apiKey, apiPassword, deviceID, groupKey, pushServerAddress, pushServerPort);
+		AsyncNotif asyncNotif = new AsyncNotif(apiKey, apiPassword, deviceID, groupKey, pushServerAddress, pushServerPort, ssl);
 		
 		// Cookie must be saved on local storage
 		
