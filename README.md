@@ -84,7 +84,21 @@ public class Notif extends Notification
 	 */
 	public Notif(String apiKey, String password, String deviceID, String groupKey, String serverAddress, int serverPort)
 	{
-		super(apiKey, password, deviceID, groupKey, serverAddress, serverPort);
+		super(apiKey, password, deviceID, groupKey, serverAddress, serverPort, false);
+	}
+	/**
+	 * Constructor with API key, API password, device ID, group key, server address and server port
+	 * @param apiKey API key of the push notification
+	 * @param password API password of the push notification
+	 * @param deviceID Device ID
+	 * @param groupKey Group key of the push notification
+	 * @param serverAddress Server address of the push notification
+	 * @param serverPort Server port of the push notification
+	 * @param ssl SSL
+	 */
+	public Notif(String apiKey, String password, String deviceID, String groupKey, String serverAddress, int serverPort, boolean ssl)
+	{
+		super(apiKey, password, deviceID, groupKey, serverAddress, serverPort, ssl);
 	}
 	public void onNotificationReceived(RemoteMessage notification)
 	{
@@ -222,12 +236,33 @@ To receive notifications asynchronously, create an object from the Notification 
  */
 public class AsyncNotif extends Thread
 {
+	/**
+	 * Notif
+	 */
 	Notif notif = new Notif();
+	/**
+	 * API key
+	 */
 	public String apiKey;
+	/**
+	 * API password
+	 */
 	public String password;
+	/**
+	 * Device ID
+	 */
 	public String deviceID;
+	/**
+	 * Interval
+	 */
 	public long interval;
+	/**
+	 * Register device
+	 */
 	public boolean registerDevice = false;
+	/**
+	 * Unregister device
+	 */
 	public boolean unregisterDevice = false;
 	/**
 	 * Constructor
@@ -249,10 +284,26 @@ public class AsyncNotif extends Thread
 	 * @param groupKey Group key of the push notification
 	 * @param serverAddress Server address of the push notification
 	 * @param serverPort Server port of the push notification
+	 * @param ssl 
 	 */
 	public AsyncNotif(String apiKey, String password, String deviceID, String groupKey, String serverAddress, int serverPort)
 	{
-		this.notif = new Notif(apiKey, password, deviceID, groupKey, serverAddress, serverPort);
+		this.notif = new Notif(apiKey, password, deviceID, groupKey, serverAddress, serverPort, false);
+		this.notif.connect();
+	}
+	/**
+	 * Constructor
+	 * @param apiKey API key of the push notification
+	 * @param password API password of the push notification
+	 * @param deviceID Device ID
+	 * @param groupKey Group key of the push notification
+	 * @param serverAddress Server address of the push notification
+	 * @param serverPort Server port of the push notification
+	 * @param ssl 
+	 */
+	public AsyncNotif(String apiKey, String password, String deviceID, String groupKey, String serverAddress, int serverPort, boolean ssl)
+	{
+		this.notif = new Notif(apiKey, password, deviceID, groupKey, serverAddress, serverPort, ssl);
 		this.notif.connect();
 	}
 	/**
@@ -268,6 +319,22 @@ public class AsyncNotif extends Thread
 	public AsyncNotif(String apiKey, String password, String deviceID, String groupKey, String serverAddress, int serverPort, int timeout)
 	{
 		this.notif = new Notif(apiKey, password, deviceID, groupKey, serverAddress, serverPort);
+		this.notif.setTimeout(timeout);
+		this.notif.connect();
+	}
+	/**
+	 * Constructor
+	 * @param apiKey API key of the push notification
+	 * @param password API password of the push notification
+	 * @param deviceID Device ID
+	 * @param groupKey Group key of the push notification
+	 * @param serverAddress Server address of the push notification
+	 * @param serverPort Server port of the push notification
+	 * @param timeout Timeout of the push notification
+	 */
+	public AsyncNotif(String apiKey, String password, String deviceID, String groupKey, String serverAddress, int serverPort, boolean ssl, int timeout)
+	{
+		this.notif = new Notif(apiKey, password, deviceID, groupKey, serverAddress, serverPort, ssl);
 		this.notif.setTimeout(timeout);
 		this.notif.connect();
 	}
@@ -300,18 +367,19 @@ public class AsyncNotif extends Thread
 	 */
 	public void unregisterDevice(String deviceID) 
 	{
-		this.notif.registerDevice(deviceID);
+		this.notif.unregisterDevice(deviceID);
 	}
 	/**
 	 * Register device to application server
 	 * @param url URL of the application server
 	 * @param deviceID Device ID
+	 * @param group User group
 	 * @param cookie Cookie
 	 * @return HTTPResponse contains server response
 	 */
-	public HTTPResponse registerDeviceApps(String url, String deviceID, String cookie) 
+	public HTTPResponse registerDeviceApps(String url, String deviceID, String group, String cookie) 
 	{
-		return this.notif.registerDeviceApps(url, deviceID, cookie, "", "", "");
+		return this.notif.registerDeviceApps(url, deviceID, group, cookie, "", "");
 	}
 	/**
 	 * Register device to application server
@@ -323,9 +391,9 @@ public class AsyncNotif extends Thread
 	 * @param group User group
 	 * @return HTTPResponse contains server response
 	 */
-	public HTTPResponse registerDeviceApps(String url, String deviceID, String cookie, String userID, String password, String group) 
+	public HTTPResponse registerDeviceApps(String url, String deviceID, String group, String cookie, String userID, String password) 
 	{
-		return this.notif.registerDeviceApps(url, deviceID, cookie, userID, password, group);
+		return this.notif.registerDeviceApps(url, deviceID, group, cookie, userID, password);
 	}
 	/**
 	 * Register device to application server
@@ -337,9 +405,9 @@ public class AsyncNotif extends Thread
 	 * @param deviceID Device ID
 	 * @return HTTPResponse contains server response
 	 */
-	public HTTPResponse unregisterDeviceApps(String url, String cookie, String userID, String password, String group, String deviceID) 
+	public HTTPResponse unregisterDeviceApps(String url, String deviceID, String group, String cookie, String userID, String password) 
 	{
-		return this.notif.unregisterDeviceApps(url, cookie, userID, password, group, deviceID);
+		return this.notif.unregisterDeviceApps(url, deviceID, group, cookie, userID, password);
 	}
 	/**
 	 * Check user authentication without user ID, password and group. The server will use session data saved according to cookie from the client.
