@@ -54,4 +54,8 @@ public class Config {
 	 * User agent
 	 */
 	public static String userAgent = "Push-Notification-Client version 1.0.0";
+	/**
+	 * Encryption key sent by the server
+	 */
+	public static String encryptionKey = "";
 }

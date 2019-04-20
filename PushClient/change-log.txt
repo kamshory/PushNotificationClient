@@ -15,3 +15,14 @@ Change Log  :
  6. Adding ServerResponse.responseCode   
  7. Adding onDataSent event. This is useful to debug the API
 =================================================================================
+
+Version     : 1.1.0
+Change Date : 16 November 2018
+Change Log  :
+ 1. Adding Encryption
+ 2. Adding encryption key
+    String Config.encryptionKey
+ 3. Support secure notification
+ 4. Fixing argument order for register and unregister device to the application
+ 5. More stable
+ 6. More efficient 

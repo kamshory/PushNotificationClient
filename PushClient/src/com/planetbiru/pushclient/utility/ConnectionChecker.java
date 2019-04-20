@@ -18,23 +18,48 @@ public class ConnectionChecker extends Thread
 	}
 	public void run()
 	{
-		if(this.waitToNext > 0)
+		if(this.notification.ssl)
 		{
-			try 
+			if(this.waitToNext > 0)
 			{
-				Thread.sleep(this.waitToNext);
-			} 
-			catch (InterruptedException e) 
+				try 
+				{
+					Thread.sleep(this.waitToNext);
+				} 
+				catch (InterruptedException e) 
+				{
+					e.printStackTrace();
+				}
+				try 
+				{
+					this.notification.socketSSL.close();
+				} 
+				catch (IOException e) 
+				{
+					e.printStackTrace();
+				}
+			}			
+		}
+		else
+		{
+			if(this.waitToNext > 0)
 			{
-				e.printStackTrace();
-			}
-			try 
-			{
-				this.notification.socket.close();
-			} 
-			catch (IOException e) 
-			{
-				e.printStackTrace();
+				try 
+				{
+					Thread.sleep(this.waitToNext);
+				} 
+				catch (InterruptedException e) 
+				{
+					e.printStackTrace();
+				}
+				try 
+				{
+					this.notification.socket.close();
+				} 
+				catch (IOException e) 
+				{
+					e.printStackTrace();
+				}
 			}
 		}
 	}

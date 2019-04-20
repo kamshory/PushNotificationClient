@@ -1,9 +1,19 @@
 package com.planetbiru.pushclient.notification;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
+import java.net.SocketException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -11,9 +21,11 @@ import org.json.JSONObject;
 
 import com.planetbiru.pushclient.config.Config;
 import com.planetbiru.pushclient.utility.ConnectionChecker;
+import com.planetbiru.pushclient.utility.Encryption;
 import com.planetbiru.pushclient.utility.HTTPClient;
 import com.planetbiru.pushclient.utility.HTTPResponse;
 import com.planetbiru.pushclient.utility.SocketIO;
+import com.planetbiru.pushclient.utility.SocketIOSSL;
 import com.planetbiru.pushclient.utility.Utility;
 
 public class Notification implements Request
@@ -22,6 +34,10 @@ public class Notification implements Request
 	 * Client socket
 	 */
 	public Socket socket = new Socket();
+	/**
+	 * Client socket
+	 */
+	public SSLSocket socketSSL = null;
 	/**
 	 * Indicate that process is stopped
 	 */
@@ -90,6 +106,7 @@ public class Notification implements Request
 	 * Flag to force stop
 	 */
 	private boolean forceStop = false;
+	public boolean ssl = false;
 	/**
 	 * Default constructor
 	 */
@@ -121,6 +138,7 @@ public class Notification implements Request
 	 * @param groupKey Group Key
 	 * @param serverAddress Server address
 	 * @param serverPort Server port
+	 * @param ssl 
 	 */
 	public Notification(String apiKey, String password, String deviceID, String groupKey, String serverAddress, int serverPort)
 	{
@@ -131,6 +149,30 @@ public class Notification implements Request
 		Config.apiKey = apiKey;
 		Config.password = password;
 		Config.groupKey = groupKey;
+		this.ssl = false;
+		this.setServerAddress(serverAddress);
+		this.setServerPort(serverPort);
+	}
+	/**
+	 * Constructor with initialization
+	 * @param apiKey API Key
+	 * @param password Password
+	 * @param deviceID Device ID
+	 * @param groupKey Group Key
+	 * @param serverAddress Server address
+	 * @param serverPort Server port
+	 * @param ssl SSL connection
+	 */
+	public Notification(String apiKey, String password, String deviceID, String groupKey, String serverAddress, int serverPort, boolean ssl)
+	{
+		this.apiKey = apiKey;
+		this.deviceID = deviceID;
+		this.password = password;
+		this.groupKey = groupKey;
+		Config.apiKey = apiKey;
+		Config.password = password;
+		Config.groupKey = groupKey;
+		this.ssl  = ssl;
 		this.setServerAddress(serverAddress);
 		this.setServerPort(serverPort);
 	}
@@ -145,43 +187,202 @@ public class Notification implements Request
 		{
 			this.connect();
 		}
-		if(this.isConnected)
+		if(this.ssl)
 		{
-			SocketIO socketIO = new SocketIO(this.socket);
-			boolean success = false;
-			while(!this.stoped && !this.forceStop)
+			if(this.isConnected)
 			{
-				try 
+				SocketIOSSL socketIO = new SocketIOSSL(this.socketSSL);
+				boolean success = false;
+				while(!this.stoped && !this.forceStop)
 				{
-					success = socketIO.read();
-					if(success)
+					try 
 					{
-						try 
+						success = socketIO.read();
+						if(success)
 						{
-							this.processPush(socketIO.getResponseHeaderArray(), socketIO.getBody());
-						} 
-						catch (NotificationException e) 
-						{
-							if(this.debugMode)
+							try 
 							{
-								e.printStackTrace();
+								this.processPush(socketIO.getResponseHeaderArray(), socketIO.getBody());
+							} 
+							catch (NotificationException e) 
+							{
+								this.sendError(e);
+								if(this.debugMode)
+								{
+									e.printStackTrace();
+								}
+							} 
+							catch (InvalidKeyException e) 
+							{
+								this.sendError(e);
+								if(this.debugMode)
+								{
+									e.printStackTrace();
+								}
+							} 
+							catch (NoSuchAlgorithmException e) 
+							{
+								this.sendError(e);
+								if(this.debugMode)
+								{
+									e.printStackTrace();
+								}
+							} 
+							catch (NoSuchPaddingException e) 
+							{
+								this.sendError(e);
+								if(this.debugMode)
+								{
+									e.printStackTrace();
+								}
+							} 
+							catch (IllegalBlockSizeException e) 
+							{
+								this.sendError(e);
+								if(this.debugMode)
+								{
+									e.printStackTrace();
+								}
+							} 
+							catch (BadPaddingException e) 
+							{
+								this.sendError(e);
+								if(this.debugMode)
+								{
+									e.printStackTrace();
+								}
+							}
+							catch (NegativeArraySizeException e)
+							{
+								this.sendError(e);
+								if(Config.debugMode)
+								{
+									e.printStackTrace();
+								}
+							}
+							catch (NullPointerException e)
+							{
+								this.sendError(e);
+								if(Config.debugMode)
+								{
+									e.printStackTrace();
+								}
 							}
 						}
-					}
-					else
+						else
+						{
+							this.stoped = true;
+						}
+					} 
+					catch (IOException e) 
 					{
 						this.stoped = true;
-					}
-				} 
-				catch (IOException e1) 
+						this.sendError(e);
+						if(this.debugMode)
+						{
+							e.printStackTrace();
+						}
+					}			
+				}
+			}
+		}
+		else
+		{
+			if(this.isConnected)
+			{
+				SocketIO socketIO = new SocketIO(this.socket);
+				boolean success = false;
+				while(!this.stoped && !this.forceStop)
 				{
-					this.stoped = true;
-					this.sendError(e1);
-					if(this.debugMode)
+					try 
 					{
-						e1.printStackTrace();
-					}
-				}			
+						success = socketIO.read();
+						if(success)
+						{
+							try 
+							{
+								this.processPush(socketIO.getResponseHeaderArray(), socketIO.getBody());
+							} 
+							catch (NotificationException e) 
+							{
+								this.sendError(e);
+								if(this.debugMode)
+								{
+									e.printStackTrace();
+								}
+							} 
+							catch (InvalidKeyException e) 
+							{
+								this.sendError(e);
+								if(this.debugMode)
+								{
+									e.printStackTrace();
+								}
+							} 
+							catch (NoSuchAlgorithmException e) 
+							{
+								this.sendError(e);
+								if(this.debugMode)
+								{
+									e.printStackTrace();
+								}
+							} 
+							catch (NoSuchPaddingException e) 
+							{
+								this.sendError(e);
+								if(this.debugMode)
+								{
+									e.printStackTrace();
+								}
+							} 
+							catch (IllegalBlockSizeException e) 
+							{
+								this.sendError(e);
+								if(this.debugMode)
+								{
+									e.printStackTrace();
+								}
+							} 
+							catch (BadPaddingException e) 
+							{
+								this.sendError(e);
+								if(this.debugMode)
+								{
+									e.printStackTrace();
+								}
+							}
+							catch (NegativeArraySizeException e)
+							{
+								this.sendError(e);
+								if(Config.debugMode)
+								{
+									e.printStackTrace();
+								}
+							}
+							catch (NullPointerException e)
+							{
+								this.sendError(e);
+								if(Config.debugMode)
+								{
+									e.printStackTrace();
+								}
+							}
+						}
+						else
+						{
+							this.stoped = true;
+						}
+					} 
+					catch (IOException e) 
+					{
+						this.stoped = true;
+						this.sendError(e);
+						if(this.debugMode)
+						{
+							e.printStackTrace();
+						}
+					}			
+				}
 			}
 		}
 		if(!this.forceStop)
@@ -215,17 +416,35 @@ public class Notification implements Request
 	{
 		this.forceStop = true;
 		this.stoped = true;
-		try 
+		if(this.ssl)
 		{
-			this.socket.close();
-		} 
-		catch (IOException e) 
-		{
-			this.sendError(e);
-			if(this.debugMode)
+			try 
 			{
-				e.printStackTrace();
+				this.socketSSL.close();
+			} 
+			catch (IOException e) 
+			{
+				this.sendError(e);
+				if(this.debugMode)
+				{
+					e.printStackTrace();
+				}
 			}
+		}
+		else
+		{
+			try 
+			{
+				this.socket.close();
+			} 
+			catch (IOException e) 
+			{
+				this.sendError(e);
+				if(this.debugMode)
+				{
+					e.printStackTrace();
+				}
+			}			
 		}
 	}
 	/**
@@ -233,20 +452,38 @@ public class Notification implements Request
 	 * @return true if success and false if failed
 	 * @throws IOException 
 	 */
-	private boolean createSocket() throws IOException
+	private boolean createSocket() throws IOException, SocketException, IllegalArgumentException, SecurityException 
 	{
-		SocketAddress socketAddress = new InetSocketAddress(this.getServerAddress() , this.getServerPort());
-		this.socket = new Socket();
-		this.socket.connect(socketAddress, this.getTimeout());
-		if(this.socket.isConnected() && !this.socket.isClosed())
+		if(this.ssl)
 		{
-			this.socket.setKeepAlive(true);
-			this.connected = true;
-			return true;
+			SSLSocketFactory factory = (SSLSocketFactory)SSLSocketFactory.getDefault();
+			this.socketSSL = (SSLSocket)factory.createSocket(this.getServerAddress(), this.getServerPort());
+			if(this.socketSSL.isConnected() && !this.socketSSL.isClosed())
+			{
+				this.socketSSL.setKeepAlive(true);
+				this.connected = true;
+				return true;
+			}
+			else
+			{
+				this.connected = false;
+			}			
 		}
 		else
 		{
-			this.connected = false;
+			SocketAddress socketAddress = new InetSocketAddress(this.getServerAddress(), this.getServerPort());
+			this.socket = new Socket();
+			this.socket.connect(socketAddress, this.getTimeout());
+			if(this.socket.isConnected() && !this.socket.isClosed())
+			{
+				this.socket.setKeepAlive(true);
+				this.connected = true;
+				return true;
+			}
+			else
+			{
+				this.connected = false;
+			}
 		}
 		return false;
 	}
@@ -315,67 +552,290 @@ public class Notification implements Request
 			{
 				this.isConnected  = this.createSocket();
 			} 
-			catch (IOException e1) 
+			catch (IllegalArgumentException e)
 			{
 				if(Config.debugMode)
 				{
-					e1.printStackTrace();
+					e.printStackTrace();
+				}
+			} 
+			catch (SecurityException e) 
+			{
+				if(Config.debugMode)
+				{
+					e.printStackTrace();
+				}
+			} 
+			catch(SocketException e)
+			{
+				if(Config.debugMode)
+				{
+					e.printStackTrace();
 				}
 			}
+			catch (IOException e) 
+			{
+				if(Config.debugMode)
+				{
+					e.printStackTrace();
+				}
+			}			
 			if(this.isConnected)
 			{
+				String command = "singin";
 				long unixTime = Utility.unixTime();
-				String token = Utility.sha1(unixTime+this.apiKey);
-				String hash = Utility.sha1(Utility.sha1(this.password)+"-"+token+"-"+this.apiKey);
-				String groupKey = Utility.urlEncode(this.groupKey);
-				SocketIO socketIO = new SocketIO(this.socket);
-				String data = "";
-				socketIO.resetRequestHeader();
-				socketIO.addRequestHeader("Command", "singin");
-				socketIO.addRequestHeader("Authorization", "key="+this.apiKey+"&token="+token+"&hash="+hash+"&time="+unixTime+"&group="+groupKey);
+				String token = "";
 				try 
 				{
-					data = this.createRequest();
-					String[] headers = socketIO.getRequestHeaderArray();
-					this.onDataSent(headers, Utility.getFirst(headers, "Command"), data);
-					this.connected = socketIO.write(data);
-					if(this.connected)
+					token = Utility.sha1(unixTime+this.apiKey);
+				} 
+				catch (NoSuchAlgorithmException e2) 
+				{
+					if(Config.debugMode)
 					{
-						boolean success = false;
-						success = socketIO.read();
-						if(success)
+						e2.printStackTrace();
+					}
+				}
+				String hash =  "";
+				try 
+				{
+					hash = Utility.sha1(Utility.sha1(this.password)+"-"+token+"-"+this.apiKey);
+				} 
+				catch (NoSuchAlgorithmException e2) 
+				{
+					if(Config.debugMode)
+					{
+						e2.printStackTrace();
+					}
+				}
+				String groupKey;
+				try 
+				{
+					groupKey = Utility.urlEncode(this.groupKey);
+				} 
+				catch (UnsupportedEncodingException e1) 
+				{
+					groupKey = this.groupKey;
+					this.sendError(e1);
+					if(Config.debugMode)
+					{
+						e1.printStackTrace();
+					}
+				}
+				if(this.ssl)
+				{
+					SocketIOSSL socketIO = new SocketIOSSL(this.socketSSL);
+					String data = "";
+					socketIO.resetRequestHeader();
+					socketIO.addRequestHeader("Command", command);
+					socketIO.addRequestHeader("Authorization", "key="+this.apiKey+"&token="+token+"&hash="+hash+"&time="+unixTime+"&group="+groupKey);
+					try 
+					{
+						data = this.createRequest();
+						String[] headers = socketIO.getRequestHeaderArray();
+						this.onDataSent(headers, command, data);
+						this.connected = socketIO.write(data);
+						if(this.connected)
 						{
-							try 
+							boolean success = false;
+							success = socketIO.read();
+							if(success)
 							{
-								this.processPush(socketIO.getResponseHeaderArray(), socketIO.getBody());
-							} 
-							catch (NotificationException e) 
-							{
-								if(Config.debugMode)
+								try 
 								{
-									e.printStackTrace();
+									this.processPush(socketIO.getResponseHeaderArray(), socketIO.getBody());
+								} 
+								catch (NotificationException e) 
+								{
+									this.sendError(e);
+									if(Config.debugMode)
+									{
+										e.printStackTrace();
+									}
+								} 
+								catch (InvalidKeyException e) 
+								{
+									this.sendError(e);
+									if(Config.debugMode)
+									{
+										e.printStackTrace();
+									}
+								} 
+								catch (NoSuchAlgorithmException e) 
+								{
+									this.sendError(e);
+									if(Config.debugMode)
+									{
+										e.printStackTrace();
+									}
+								} 
+								catch (NoSuchPaddingException e) 
+								{
+									this.sendError(e);
+									if(Config.debugMode)
+									{
+										e.printStackTrace();
+									}
+								} 
+								catch (IllegalBlockSizeException e) 
+								{
+									this.sendError(e);
+									if(Config.debugMode)
+									{
+										e.printStackTrace();
+									}
+								} 
+								catch (BadPaddingException e) 
+								{
+									this.sendError(e);
+									if(Config.debugMode)
+									{
+										e.printStackTrace();
+									}
+								}
+								catch (NegativeArraySizeException e)
+								{
+									this.sendError(e);
+									if(Config.debugMode)
+									{
+										e.printStackTrace();
+									}
+								}
+								catch (NullPointerException e)
+								{
+									this.sendError(e);
+									if(Config.debugMode)
+									{
+										e.printStackTrace();
+									}
 								}
 							}
+							else
+							{
+								this.stoped = true;
+							}
 						}
-						else
-						{
-							this.stoped = true;
-						}
-					}
-				} 
-				catch (IOException e) 
-				{
-					this.sendError(e);
-					if(this.debugMode)
+					} 
+					catch (IOException e) 
 					{
-						e.printStackTrace();
+						this.sendError(e);
+						if(this.debugMode)
+						{
+							e.printStackTrace();
+						}
+						return this.reconnect(this.countDownReconnect);
 					}
-					return this.reconnect(this.countDownReconnect);
+				}
+				else
+				{
+					SocketIO socketIO = new SocketIO(this.socket);
+					String data = "";
+					socketIO.resetRequestHeader();
+					socketIO.addRequestHeader("Command", command);
+					socketIO.addRequestHeader("Authorization", "key="+this.apiKey+"&token="+token+"&hash="+hash+"&time="+unixTime+"&group="+groupKey);
+					try 
+					{
+						data = this.createRequest();
+						String[] headers = socketIO.getRequestHeaderArray();
+						this.onDataSent(headers, command, data);
+						this.connected = socketIO.write(data);
+						
+						if(this.connected)
+						{
+							boolean success = false;
+							success = socketIO.read();
+							if(success)
+							{
+								try 
+								{
+									this.processPush(socketIO.getResponseHeaderArray(), socketIO.getBody());
+								} 
+								catch (NotificationException e) 
+								{
+									this.sendError(e);
+									if(Config.debugMode)
+									{
+										e.printStackTrace();
+									}
+								} 
+								catch (InvalidKeyException e) 
+								{
+									this.sendError(e);
+									if(Config.debugMode)
+									{
+										e.printStackTrace();
+									}
+								} 
+								catch (NoSuchAlgorithmException e) 
+								{
+									this.sendError(e);
+									if(Config.debugMode)
+									{
+										e.printStackTrace();
+									}
+								} 
+								catch (NoSuchPaddingException e) 
+								{
+									this.sendError(e);
+									if(Config.debugMode)
+									{
+										e.printStackTrace();
+									}
+								} 
+								catch (IllegalBlockSizeException e) 
+								{
+									this.sendError(e);
+									if(Config.debugMode)
+									{
+										e.printStackTrace();
+									}
+								} 
+								catch (BadPaddingException e) 
+								{
+									this.sendError(e);
+									if(Config.debugMode)
+									{
+										e.printStackTrace();
+									}
+								}
+								catch (NegativeArraySizeException e)
+								{
+									this.sendError(e);
+									if(Config.debugMode)
+									{
+										e.printStackTrace();
+									}
+								}
+								catch (NullPointerException e)
+								{
+									this.sendError(e);
+									if(Config.debugMode)
+									{
+										e.printStackTrace();
+									}
+								}
+							}
+							else
+							{
+								this.stoped = true;
+							}
+						}
+					} 
+					catch (IOException e) 
+					{
+						this.sendError(e);
+						if(this.debugMode)
+						{
+							e.printStackTrace();
+						}
+						return this.reconnect(this.countDownReconnect);
+					}
 				}
 			}
 			else
 			{
-				return this.reconnect(this.countDownReconnect );
+
+				return this.reconnect(this.countDownReconnect);
 			}		
 			return this.isConnected;
 		}
@@ -386,14 +846,29 @@ public class Notification implements Request
 	 */
 	public boolean disconnect()
 	{
-		try 
+		if(this.ssl)
 		{
-			this.socket.close();
-			this.connected = false;
-		} 
-		catch (IOException e) 
+			try 
+			{
+				this.socketSSL.close();
+				this.connected = false;
+			} 
+			catch (IOException e) 
+			{
+				this.sendError(e);
+			}
+		}
+		else
 		{
-			this.sendError(e);
+			try 
+			{
+				this.socket.close();
+				this.connected = false;
+			} 
+			catch (IOException e) 
+			{
+				this.sendError(e);
+			}			
 		}
 		return true;
 	}
@@ -402,10 +877,30 @@ public class Notification implements Request
 	 * @param headers Headers
 	 * @param body Body
 	 * @throws NotificationException 
+	 * @throws NoSuchPaddingException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws InvalidKeyException 
+	 * @throws BadPaddingException 
+	 * @throws IllegalBlockSizeException 
+	 * @throws IOException 
 	 */
-	private void processPush(String[] headers, String body) throws NotificationException
+	private void processPush(String[] headers, String body) throws NotificationException, InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException, NegativeArraySizeException, NullPointerException, IOException
 	{
 		String command = Utility.getFirst(headers, "Command");
+		String secure = Utility.getFirst(headers, "Content-Secure");
+		boolean encrypted = false;
+		if(secure.length() > 0)
+		{
+			if(secure.toLowerCase().equals("yes"))
+			{
+				encrypted = true;
+				String encryptionKey1 = Config.encryptionKey;
+				String encryptionKey2 = "";
+				encryptionKey2 = Utility.sha1(Config.password);
+				Encryption encryption = new Encryption(encryptionKey1+encryptionKey2);
+				body = encryption.decrypt(body, true);
+			}
+		}
 		this.onDataReceived(headers, command, body);
 		String messageType = Utility.getFirst(headers, "Content-Type");
 		String commandLower = command.toLowerCase().trim();
@@ -427,7 +922,14 @@ public class Notification implements Request
 			catch(JSONException e)
 			{
 				this.sendError(e);
-				throw new NotificationException("Data must be a valid JSONArray");
+				if(encrypted)
+				{
+					throw new InvalidKeyException("Data is encrypted. Make sure the key is valid.");
+				}
+				else
+				{
+					throw new NotificationException("Data must be a valid JSONArray");
+				}
 			}
 		}
 		else if(commandLower.equals("delete-notification"))
@@ -450,7 +952,14 @@ public class Notification implements Request
 			catch(JSONException e)
 			{
 				this.sendError(e);
-				throw new NotificationException("Data must be a valid JSONArray");
+				if(encrypted)
+				{
+					throw new InvalidKeyException("Data is encrypted. Make sure the key is valid.");
+				}
+				else
+				{
+					throw new NotificationException("Data must be a valid JSONArray");
+				}
 			}
 		}
 		else if(commandLower.equals("token"))
@@ -474,7 +983,14 @@ public class Notification implements Request
 			catch(JSONException e)
 			{
 				this.sendError(e);
-				throw new NotificationException("Data must be a valid JSONObject");
+				if(encrypted)
+				{
+					throw new InvalidKeyException("Data is encrypted. Make sure the key is valid.");
+				}
+				else
+				{
+					throw new NotificationException("Data must be a valid JSONArray");
+				}
 			}
 		}
 		else if(commandLower.equals("unregister-device-success"))
@@ -491,7 +1007,14 @@ public class Notification implements Request
 			catch(JSONException e)
 			{
 				this.sendError(e);
-				throw new NotificationException("Data must be a valid JSONObject");
+				if(encrypted)
+				{
+					throw new InvalidKeyException("Data is encrypted. Make sure the key is valid.");
+				}
+				else
+				{
+					throw new NotificationException("Data must be a valid JSONArray");
+				}
 			}
 		}
 		else if(commandLower.equals("register-device-success"))
@@ -502,13 +1025,20 @@ public class Notification implements Request
 				jo = new JSONObject(body);
 				int responseCode = jo.optInt("responseCode", 0);
 				String message = jo.optString("message", "");
-				deviceID = jo.optString("deviceID", "");
+				String deviceID = jo.optString("deviceID", "");
 				this.onRegisterDeviceSuccess(deviceID, responseCode, message);
 			}
 			catch(JSONException e)
 			{				
 				this.sendError(e);
-				throw new NotificationException("Data must be a valid JSONObject");
+				if(encrypted)
+				{
+					throw new InvalidKeyException("Data is encrypted. Make sure the key is valid.");
+				}
+				else
+				{
+					throw new NotificationException("Data must be a valid JSONArray");
+				}
 			}
 		}
 		else if(commandLower.equals("register-device-error"))
@@ -526,7 +1056,14 @@ public class Notification implements Request
 			catch(JSONException e)
 			{
 				this.sendError(e);
-				throw new NotificationException("Data must be a valid JSONObject");
+				if(encrypted)
+				{
+					throw new InvalidKeyException("Data is encrypted. Make sure the key is valid.");
+				}
+				else
+				{
+					throw new NotificationException("Data must be a valid JSONArray");
+				}
 			}
 		}
 		else if(commandLower.equals("unregister-device-error"))
@@ -544,7 +1081,14 @@ public class Notification implements Request
 			catch(JSONException e)
 			{
 				this.sendError(e);
-				throw new NotificationException("Data must be a valid JSONObject");
+				if(encrypted)
+				{
+					throw new InvalidKeyException("Data is encrypted. Make sure the key is valid.");
+				}
+				else
+				{
+					throw new NotificationException("Data must be a valid JSONArray");
+				}
 			}
 		}
 		else if(commandLower.equals("setting"))
@@ -609,7 +1153,14 @@ public class Notification implements Request
 			catch(JSONException e)
 			{
 				this.sendError(e);
-				throw new NotificationException("Data must be a valid JSONArray");
+				if(encrypted)
+				{
+					throw new InvalidKeyException("Data is encrypted. Make sure the key is valid.");
+				}
+				else
+				{
+					throw new NotificationException("Data must be a valid JSONArray");
+				}
 			}			
 		}
 		else if(commandLower.equals("question"))
@@ -623,6 +1174,24 @@ public class Notification implements Request
 				if(question.length() > 0)
 				{
 					this.answerQuestion(deviceID, question);
+				}
+			}
+			catch(JSONException e)
+			{
+				this.sendError(e);
+				throw new NotificationException("Data must be a valid JSONObject");
+			}
+		}
+		else if(commandLower.equals("key"))
+		{
+			JSONObject jo;
+			try
+			{
+				jo = new JSONObject(body);
+				String key = jo.optString("key", "").trim();
+				if(key.length() > 0)
+				{
+					Config.encryptionKey = key;
 				}
 			}
 			catch(JSONException e)
@@ -660,26 +1229,74 @@ public class Notification implements Request
 	 */
 	private void answerQuestion(String deviceID, String question) 
 	{
-		String hashPassword = Utility.sha1(this.password);
-		String answer = Utility.sha1((hashPassword+"-"+question+"-"+deviceID));
-		SocketIO socketIO = new SocketIO(this.socket);
-		socketIO.resetRequestHeader();
-		socketIO.addRequestHeader("Command", "answer");
-		socketIO.addRequestHeader("Content-Type", "application/json");
+		String command = "answer";
+		String hashPassword = "";
 		try 
 		{
-			JSONObject data = new JSONObject();
-			data.put("deviceID", deviceID);
-			data.put("answer", answer);
-			data.put("question", question);
-			String data2sent = data.toString();
-			String[] headers = socketIO.getRequestHeaderArray();
-			this.onDataSent(headers, Utility.getFirst(headers, "Command"), data2sent);
-			socketIO.write(data2sent);
-		}
-		catch(IOException e)
+			hashPassword = Utility.sha1(this.password);
+		} 
+		catch (NoSuchAlgorithmException e) 
 		{
-			this.sendError(e);
+			if(Config.debugMode)
+			{
+				e.printStackTrace();
+			}
+		}
+		String answer = "";
+		try 
+		{
+			answer = Utility.sha1((hashPassword+"-"+question+"-"+deviceID));
+		} 
+		catch (NoSuchAlgorithmException e) 
+		{
+			if(Config.debugMode)
+			{
+				e.printStackTrace();
+			}
+		}
+		if(this.ssl)
+		{
+			SocketIOSSL socketIO = new SocketIOSSL(this.socketSSL);
+			socketIO.resetRequestHeader();
+			socketIO.addRequestHeader("Command", command);
+			socketIO.addRequestHeader("Content-Type", "application/json");
+			try 
+			{
+				JSONObject data = new JSONObject();
+				data.put("deviceID", deviceID);
+				data.put("answer", answer);
+				data.put("question", question);
+				String data2sent = data.toString();
+				String[] headers = socketIO.getRequestHeaderArray();
+				this.onDataSent(headers, command, data2sent);
+				socketIO.write(data2sent);
+			}
+			catch(IOException e)
+			{
+				this.sendError(e);
+			}
+		}
+		else
+		{
+			SocketIO socketIO = new SocketIO(this.socket);
+			socketIO.resetRequestHeader();
+			socketIO.addRequestHeader("Command", command);
+			socketIO.addRequestHeader("Content-Type", "application/json");
+			try 
+			{
+				JSONObject data = new JSONObject();
+				data.put("deviceID", deviceID);
+				data.put("answer", answer);
+				data.put("question", question);
+				String data2sent = data.toString();
+				String[] headers = socketIO.getRequestHeaderArray();
+				this.onDataSent(headers, command, data2sent);
+				socketIO.write(data2sent);
+			}
+			catch(IOException e)
+			{
+				this.sendError(e);
+			}			
 		}
 	}
 	/**
@@ -715,9 +1332,10 @@ public class Notification implements Request
 		}
 		if(this.isConnected)
 		{
-			SocketIO socketIO = new SocketIO(this.socket);
+			String command = "register-device";
+			SocketIO socketIO = new SocketIO(this.socketSSL);
 			socketIO.resetRequestHeader();
-			socketIO.addRequestHeader("Command", "register-device");
+			socketIO.addRequestHeader("Command", command);
 			socketIO.addRequestHeader("Authorization", "key="+this.apiKey);
 			boolean success = false;
 			try 
@@ -726,7 +1344,7 @@ public class Notification implements Request
 				data.put("deviceID", deviceID);
 				success = socketIO.write(data.toString());
 				String[] headers = socketIO.getRequestHeaderArray();
-				this.onDataSent(headers, Utility.getFirst(headers, "Command"), data.toString());
+				this.onDataSent(headers, command, data.toString());
 				if(success)
 				{
 					this.onRegisterDeviceSendSuccess(deviceID, "Data sent to notification server");
@@ -748,7 +1366,7 @@ public class Notification implements Request
 				}
 				try 
 				{
-					this.socket.close();
+					this.socketSSL.close();
 				} 
 				catch (IOException e1) 
 				{
@@ -773,7 +1391,7 @@ public class Notification implements Request
 	 * @return true if success and false if failed
 	 * @throws IOException if any IO errors
 	 */
-	public boolean unregisterDevice(String deviceID) throws IOException
+	public boolean unregisterDevice(String deviceID)
 	{
 		if(!this.isConnected)
 		{
@@ -781,9 +1399,10 @@ public class Notification implements Request
 		}
 		if(this.isConnected)
 		{
-			SocketIO socketIO = new SocketIO(this.socket);
+			String command = "unregister-device";
+			SocketIO socketIO = new SocketIO(this.socketSSL);
 			socketIO.resetRequestHeader();
-			socketIO.addRequestHeader("Command", "unregister-device");
+			socketIO.addRequestHeader("Command", command);
 			socketIO.addRequestHeader("Authorization", "key="+this.apiKey);
 			boolean success = false;
 			try 
@@ -791,7 +1410,7 @@ public class Notification implements Request
 				JSONObject data = new JSONObject();
 				data.put("deviceID", deviceID);
 				String[] headers = socketIO.getRequestHeaderArray();
-				this.onDataSent(headers, Utility.getFirst(headers, "Command"), data.toString());
+				this.onDataSent(headers, command, data.toString());
 				success = socketIO.write(data.toString());
 				if(success)
 				{
@@ -814,7 +1433,7 @@ public class Notification implements Request
 				}
 				try 
 				{
-					this.socket.close();
+					this.socketSSL.close();
 				} 
 				catch (IOException e1) 
 				{
@@ -843,21 +1462,69 @@ public class Notification implements Request
 	 * @param group User group
 	 * @return HTTPResponse contains server response
 	 */
-	public HTTPResponse registerDeviceApps(String url, String deviceID, String cookie, String userID, String password, String group) 
+	public HTTPResponse registerDeviceApps(String url, String deviceID, String group, String cookie, String userID, String password) 
 	{
 		String postData = "";
-		postData += "device_id="+Utility.urlEncode(deviceID)+"&";
+		try 
+		{
+			deviceID = Utility.urlEncode(deviceID);
+		} 
+		catch (UnsupportedEncodingException e) 
+		{
+			this.sendError(e);
+			if(Config.debugMode)
+			{
+				e.printStackTrace();
+			}			
+		}
+		try 
+		{
+			userID = Utility.urlEncode(userID);
+		} 
+		catch (UnsupportedEncodingException e) 
+		{
+			this.sendError(e);
+			if(Config.debugMode)
+			{
+				e.printStackTrace();
+			}			
+		} 
+		try 
+		{
+			password = Utility.urlEncode(password);
+		} 
+		catch (UnsupportedEncodingException e) 
+		{
+			this.sendError(e);
+			if(Config.debugMode)
+			{
+				e.printStackTrace();
+			}			
+		}
+		try 
+		{
+			group = Utility.urlEncode(group);
+		} 
+		catch (UnsupportedEncodingException e) 
+		{
+			this.sendError(e);
+			if(Config.debugMode)
+			{
+				e.printStackTrace();
+			}			
+		}
+		postData += "device_id="+deviceID+"&";
 		if(userID.length() > 0)
 		{
-			postData += "user_id="+Utility.urlEncode(userID)+"&";
+			postData += "user_id="+userID+"&";
 		}
 		if(password.length() > 0)
 		{
-			postData += "password="+Utility.sha1(password)+"&";
+			postData += "password="+password+"&";
 		}
 		if(group.length() > 0)
 		{
-			postData += "group="+Utility.urlEncode(group)+"&";
+			postData += "group="+group+"&";
 		}
 		postData += "action=register";
 		HTTPResponse response = new HTTPResponse();
@@ -882,13 +1549,61 @@ public class Notification implements Request
 	 * @param group User group
 	 * @return HTTPResponse contains server response
 	 */
-	public HTTPResponse unregisterDeviceApps(String url, String cookie, String group, String userID, String password, String deviceID) 
+	public HTTPResponse unregisterDeviceApps(String url, String deviceID, String group, String cookie, String userID, String password) 
 	{
 		String postData = "";
-		postData += "device_id="+Utility.urlEncode(deviceID)+"&";
-		postData += "user_id="+Utility.urlEncode(userID)+"&";
-		postData += "password="+Utility.sha1(password)+"&";
-		postData += "group="+Utility.urlEncode(group)+"&";
+		try 
+		{
+			deviceID = Utility.urlEncode(deviceID);
+		} 
+		catch (UnsupportedEncodingException e) 
+		{
+			this.sendError(e);
+			if(Config.debugMode)
+			{
+				e.printStackTrace();
+			}			
+		}
+		try 
+		{
+			userID = Utility.urlEncode(userID);
+		} 
+		catch (UnsupportedEncodingException e) 
+		{
+			this.sendError(e);
+			if(Config.debugMode)
+			{
+				e.printStackTrace();
+			}			
+		} 
+		try 
+		{
+			password = Utility.urlEncode(password);
+		} 
+		catch (UnsupportedEncodingException e) 
+		{
+			this.sendError(e);
+			if(Config.debugMode)
+			{
+				e.printStackTrace();
+			}			
+		}
+		try 
+		{
+			group = Utility.urlEncode(group);
+		} 
+		catch (UnsupportedEncodingException e) 
+		{
+			this.sendError(e);
+			if(Config.debugMode)
+			{
+				e.printStackTrace();
+			}			
+		}
+		postData += "device_id="+deviceID+"&";
+		postData += "user_id="+userID+"&";
+		postData += "password="+password+"&";
+		postData += "group="+group+"&";
 		postData += "action=unregister";
 		HTTPResponse response = new HTTPResponse();
 		HTTPClient httpClient = new HTTPClient();
@@ -936,9 +1651,46 @@ public class Notification implements Request
 	public HTTPResponse login(String url, String cookie, String userID, String password, String group) 
 	{
 		String postData = "";
-		postData += "user_id="+Utility.urlEncode(userID)+"&";
-		postData += "password="+Utility.sha1(password)+"&";
-		postData += "group="+Utility.urlEncode(group)+"&";
+		try 
+		{
+			userID = Utility.urlEncode(userID);
+		} 
+		catch (UnsupportedEncodingException e) 
+		{
+			this.sendError(e);
+			if(Config.debugMode)
+			{
+				e.printStackTrace();
+			}			
+		} 
+		try 
+		{
+			password = Utility.urlEncode(password);
+		} 
+		catch (UnsupportedEncodingException e) 
+		{
+			this.sendError(e);
+			if(Config.debugMode)
+			{
+				e.printStackTrace();
+			}			
+		}
+		try 
+		{
+			group = Utility.urlEncode(group);
+		} 
+		catch (UnsupportedEncodingException e) 
+		{
+			this.sendError(e);
+			if(Config.debugMode)
+			{
+				e.printStackTrace();
+			}			
+		}
+		
+		postData += "user_id="+userID+"&";
+		postData += "password="+password+"&";
+		postData += "group="+group+"&";
 		postData += "action=login";
 		HTTPResponse response = new HTTPResponse();
 		HTTPClient httpClient = new HTTPClient();

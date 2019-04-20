@@ -176,29 +176,6 @@ public class SocketIO
 		return this.requestHeader.getOrDefault(key, defaultValue);
 	}
 	/**
-	 * Get last substring
-	 * @param data String
-	 * @param length Length
-	 * @return Last substring
-	 */
-	public String last(String data, int length)
-	{
-		if(data.length() < length)
-		{
-			return "";
-		}
-		byte[] b = data.getBytes();
-		int dataLength = b.length;
-		int offset = dataLength - length;
-		String result = "";
-		int i;
-		for(i = offset; i<dataLength; i++ )
-		{
-			result += String.format("%c", b[i]);
-		}
-		return result;
-	}
-	/**
 	 * Read response header
 	 * @return String contains response header
 	 * @throws IOException -f any IO errors
@@ -216,9 +193,11 @@ public class SocketIO
 				data += String.format("%c", buf);
 			}
 		}
-		while(!this.last(data, 4).equals("\r\n\r\n") && buf > -1);
+		while(!data.contains("\r\n\r\n") && buf > -1);
 		data = data.trim();
 		this.rawResponseHeader = data;
+		System.out.println(this.socket);
+		System.out.println(this.rawResponseHeader);
 		this.header = data;
 		return data;
 	}

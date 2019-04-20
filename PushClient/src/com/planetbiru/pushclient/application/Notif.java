@@ -42,14 +42,27 @@ public class Notif extends Notification
 	{
 		super(apiKey, password, deviceID, groupKey, serverAddress, serverPort);
 	}
+	/**
+	 * Constructor with API key, API password, device ID, group key, server address and server port
+	 * @param apiKey API key of the push notification
+	 * @param password API password of the push notification
+	 * @param deviceID Device ID
+	 * @param groupKey Group key of the push notification
+	 * @param serverAddress Server address of the push notification
+	 * @param serverPort Server port of the push notification
+	 * @param ssl SSL connection
+	 */
+	public Notif(String apiKey, String password, String deviceID, String groupKey, String serverAddress, int serverPort, boolean ssl)
+	{
+		super(apiKey, password, deviceID, groupKey, serverAddress, serverPort, ssl);
+	}
 	public void onNotificationReceived(RemoteMessage notification)
 	{
 		// TODO: Add your code here to insert message into local database
 		
 		System.out.println("\r\n---------------------------------------------\r\n");
 		
-		System.out.println("Content Type = "+notification.contentType);
-		
+		System.out.println("Content Type = "+notification.contentType);		
 		System.out.println("ID           = "+notification.notification.id);
 		System.out.println("TYPE         = "+notification.notification.type);
 		System.out.println("TITLE        = "+notification.notification.title);
@@ -74,15 +87,9 @@ public class Notif extends Notification
 	}
 	public void onDataReceived(String[] headers, String command, String body)
 	{
-		System.out.println("RECEIVE DATA");
-		System.out.println("COMMAND : "+command);
-		System.out.println("DATA    : "+body);
 	}
 	public void onDataSent(String[] headers, String command, String body)
 	{
-		System.out.println("SEND DATA");
-		System.out.println("COMMAND : "+command);
-		System.out.println("DATA    : "+body);
 	}
 	public void onNewToken(String token, String time, long waitToNext, int timeZone)
 	{

@@ -5,12 +5,33 @@ import java.security.cert.Certificate;
 
 public class HTTPResponse 
 {
+	/**
+	 * Header
+	 */
 	public String header = "";
+	/**
+	 * Cookie
+	 */
 	public String cookie = "";
+	/**
+	 * Body
+	 */
 	public String body = "";
+	/**
+	 * Response code
+	 */
 	public int responseCode = 200;
+	/**
+	 * Cipher suite
+	 */
 	public String cipherSuite = "";
+	/**
+	 * Certificate
+	 */
 	public Certificate[] serverCertificates = null;
+	/**
+	 * To string
+	 */
 	public String toString()
 	{
 		Field[] fields = this.getClass().getDeclaredFields();

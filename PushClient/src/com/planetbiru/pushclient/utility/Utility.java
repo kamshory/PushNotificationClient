@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -15,8 +16,16 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.TimeZone;
 
+/**
+ * Utility
+ * @author Kamshory, MT
+ *
+ */
 public class Utility 
 {
+	/**
+	 * Default constructor
+	 */
 	public Utility()
 	{
 		
@@ -53,8 +62,9 @@ public class Utility
 	 * Parse query string
 	 * @param query String contains query
 	 * @return Map contains the query
+	 * @throws UnsupportedEncodingException 
 	 */
-	public static Map<String, String> parseQuery(String query)
+	public static Map<String, String> parseQuery(String query) throws UnsupportedEncodingException
     {
 		Map<String, String> result = new HashMap<String, String>();
     	if(query != null)
@@ -95,36 +105,24 @@ public class Utility
 	 * Encode URI
 	 * @param input Raw URI
 	 * @return Encoded URI
+	 * @throws UnsupportedEncodingException 
 	 */
-	public static String urlEncode(String input) 
+	public static String urlEncode(String input) throws UnsupportedEncodingException 
 	{
 	   	String result = "";
-		try 
-		{
-			result = java.net.URLEncoder.encode(input, "UTF-8");
-		} 
-		catch (UnsupportedEncodingException e) 
-		{
-			e.printStackTrace();
-		}
+		result = java.net.URLEncoder.encode(input, "UTF-8");
     	return result;
 	}
 	/**
 	 * Decode URI
 	 * @param input Encoded URI
 	 * @return Raw URI
+	 * @throws UnsupportedEncodingException 
 	 */
-	public static String urlDecode(String input)
+	public static String urlDecode(String input) throws UnsupportedEncodingException
     {
     	String result = "";
-		try 
-		{
-			result = java.net.URLDecoder.decode(input, "UTF-8");
-		} 
-		catch (UnsupportedEncodingException e) 
-		{
-			e.printStackTrace();
-		}
+		result = java.net.URLDecoder.decode(input, "UTF-8");
     	return result;
     }
 	/**
@@ -295,24 +293,13 @@ public class Utility
      * @param secondByte Second bytes
      * @return Concatenated bytes
      */
-	public static byte[] byteConcate(byte[] firstByte, byte[] secondByte)
+	public static byte[] byteConcate(byte[] firstByte, byte[] secondByte) throws IOException
 	{
 		byte[] z = new byte[firstByte.length+secondByte.length];
 		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-		try 
-		{
-			outputStream.write(firstByte);
-			outputStream.write(secondByte);
-			z = outputStream.toByteArray();
-		} 
-		catch (IOException e) 
-		{
-			e.printStackTrace();
-		}
-		catch (Exception e) 
-		{
-			e.printStackTrace();
-		}
+		outputStream.write(firstByte);
+		outputStream.write(secondByte);
+		z = outputStream.toByteArray();
 		return z;
 	}
     /**
@@ -322,21 +309,14 @@ public class Utility
      * @param thirdByte Third bytes
      * @return Concatenated bytes
      */
-	public static byte[] byteConcate(byte[] firstByte, byte[] secondByte, byte[] thirdByte)
+	public static byte[] byteConcate(byte[] firstByte, byte[] secondByte, byte[] thirdByte) throws IOException
 	{
 		byte[] z = new byte[firstByte.length+secondByte.length+thirdByte.length];
 		ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
-		try 
-		{
-			outputStream.write(firstByte);
-			outputStream.write(secondByte);
-			outputStream.write(thirdByte);
-			z = outputStream.toByteArray();
-		} 
-		catch (IOException e) 
-		{
-			e.printStackTrace();
-		}
+		outputStream.write(firstByte);
+		outputStream.write(secondByte);
+		outputStream.write(thirdByte);
+		z = outputStream.toByteArray();
 		return z;
 	}
     /**
@@ -347,98 +327,70 @@ public class Utility
      * @param fourthByte Fourth byte
      * @return Concatenated bytes
      */
-	public static byte[] byteConcate(byte[] firstByte, byte[] secondByte, byte[] thirdByte, byte[] fourthByte)
+	public static byte[] byteConcate(byte[] firstByte, byte[] secondByte, byte[] thirdByte, byte[] fourthByte) throws IOException
 	{
 		byte[] z = new byte[firstByte.length+secondByte.length+thirdByte.length];
 		ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
-		try 
-		{
-			outputStream.write(firstByte);
-			outputStream.write(secondByte);
-			outputStream.write(thirdByte);
-			outputStream.write(fourthByte);
-			z = outputStream.toByteArray();
-		} 
-		catch (IOException e) 
-		{
-			e.printStackTrace();
-		}
+		outputStream.write(firstByte);
+		outputStream.write(secondByte);
+		outputStream.write(thirdByte);
+		outputStream.write(fourthByte);
+		z = outputStream.toByteArray();
 		return z;
 	}
 	/**
 	 * Generate SHA-256 hash code from a string
 	 * @param input Input string
 	 * @return SHA-256 hash code
+	 * @throws NoSuchAlgorithmException 
 	 */
-	public static String sha256(String input)
+	public static String sha256(String input) throws IOException, NoSuchAlgorithmException
 	{
 		String output = "";
 		if(input == null)
 		{
 			input = "";
 		}
-		try
-		{
-			MessageDigest digest = MessageDigest.getInstance("SHA-256");
-			byte[] encodedhash = digest.digest(input.getBytes());
-			output = Utility.bytesToHex(encodedhash);
-			return output;
-		}
-		catch(Exception e)
-		{
-			e.printStackTrace();
-			return "";
-		}
+		MessageDigest digest = MessageDigest.getInstance("SHA-256");
+		byte[] encodedhash = digest.digest(input.getBytes());
+		output = Utility.bytesToHex(encodedhash);
+		return output;
 	}
 	/**
 	 * Generate SHA-1 hash code from a string
 	 * @param input Input string
 	 * @return SHA-1 hash code
+	 * @throws NoSuchAlgorithmException 
 	 */
-	public static String sha1(String input)
+	public static String sha1(String input) throws NoSuchAlgorithmException
 	{
 		String output = "";
 		if(input == null)
 		{
 			input = "";
 		}
-		try
-		{
-			MessageDigest digest = MessageDigest.getInstance("SHA-1");
-			byte[] encodedhash = digest.digest(input.getBytes());
-			output = Utility.bytesToHex(encodedhash);
-			return output;
-		}
-		catch(Exception e)
-		{
-			e.printStackTrace();
-			return "";
-		}
+		MessageDigest digest = MessageDigest.getInstance("SHA-1");
+		byte[] encodedhash = digest.digest(input.getBytes());
+		output = Utility.bytesToHex(encodedhash);
+		return output;
 	}
 	/**
 	 * Generate MD5 hash code from a string
 	 * @param input Input string
 	 * @return MD5 hash code
+	 * @throws NoSuchAlgorithmException 
 	 */
-	public static String md5(String input)
+	public static String md5(String input) throws IOException, NoSuchAlgorithmException
 	{
 		String output = "";
-		if(input == null)
+		if(input.length() == 0)
 		{
-			input = "";
-		}
-		try
-		{
-			MessageDigest digest = MessageDigest.getInstance("MD5");
-			byte[] encodedhash = digest.digest(input.getBytes());
-			output = Utility.bytesToHex(encodedhash);
-			return output;
-		}
-		catch(Exception e)
-		{
-			e.printStackTrace();
 			return "";
 		}
+		MessageDigest digest = MessageDigest.getInstance("MD5");
+		byte[] encodedhash = digest.digest(input.getBytes());
+		output = Utility.bytesToHex(encodedhash);
+		return output;
 	}
 	/**
 	 * Convert byte to hexadecimal number
@@ -448,10 +400,13 @@ public class Utility
 	public static String bytesToHex(byte[] hash) 
 	{
 	    StringBuffer hexString = new StringBuffer();
-	    for (int i = 0; i < hash.length; i++) {
-	    String hex = Integer.toHexString(0xff & hash[i]);
-	    if(hex.length() == 1) hexString.append('0');
-	    	hexString.append(hex);
+	    for (int i = 0; i < hash.length; i++) 
+	    {
+	    	String hex = Integer.toHexString(0xff & hash[i]);
+	    	if(hex.length() == 1) hexString.append('0');
+	    	{
+	    		hexString.append(hex);
+	    	}
 	    }
 	    return hexString.toString();
 	}
@@ -595,19 +550,12 @@ public class Utility
 	 * @param format Date time format
 	 * @return String contains current date time
 	 */
-	public static String date(String format)
+	public static String date(String format) throws NullPointerException, IllegalArgumentException
 	{
 		String result = "";
-		try
-		{
-			SimpleDateFormat dateFormat = new SimpleDateFormat(format);
-			Date dateObject = new Date();
-			result = dateFormat.format(dateObject);
-		}
-		catch(Exception e)
-		{
-			e.printStackTrace();
-		}
+		SimpleDateFormat dateFormat = new SimpleDateFormat(format);
+		Date dateObject = new Date();
+		result = dateFormat.format(dateObject);
 		return result;
 	}
 	/**
@@ -616,18 +564,11 @@ public class Utility
 	 * @param date Date time
 	 * @return String contains current date time
 	 */
-	public static String date(String format, Date date)
+	public static String date(String format, Date date) throws NullPointerException, IllegalArgumentException
 	{
 		String result = "";
-		try
-		{
-			SimpleDateFormat dateFormat = new SimpleDateFormat(format);
-			result = dateFormat.format(date);
-		}
-		catch(Exception e)
-		{
-			e.printStackTrace();
-		}
+		SimpleDateFormat dateFormat = new SimpleDateFormat(format);
+		result = dateFormat.format(date);
 		return result;
 	}
 	/**
@@ -636,19 +577,12 @@ public class Utility
 	 * @param time Unix Timestamp
 	 * @return String contains current date time
 	 */
-	public static String date(String format, long time)
+	public static String date(String format, long time) throws NullPointerException, IllegalArgumentException
 	{
 		String result = "";
-		try
-		{
-			SimpleDateFormat dateFormat = new SimpleDateFormat(format);
-			Date dateObject = new Date(time);
-			result = dateFormat.format(dateObject);
-		}
-		catch(Exception e)
-		{
-			e.printStackTrace();
-		}
+		SimpleDateFormat dateFormat = new SimpleDateFormat(format);
+		Date dateObject = new Date(time);
+		result = dateFormat.format(dateObject);
 		return result;
 	}
 	/**
@@ -671,19 +605,12 @@ public class Utility
 	    cal.add(Calendar.DATE, +1);
 	    return cal.getTime();		
 	}
-	public static String now()
+	public static String now() throws NullPointerException, IllegalArgumentException
 	{
 		String result = "";
-		try
-		{
-			DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-		    Date dateObject = new Date();
-		    result = dateFormat.format(dateObject);
-		}
-		catch(Exception e)
-		{
-			e.printStackTrace();
-		}
+		DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+	    Date dateObject = new Date();
+	    result = dateFormat.format(dateObject);
 		return result;
 	}
 	/**
@@ -691,7 +618,7 @@ public class Utility
 	 * @param precission Decimal precission
 	 * @return Current time with format yyyy-MM-dd
 	 */
-	public static String now(int precission)
+	public static String now(int precission) throws NullPointerException, IllegalArgumentException
 	{
 		if(precission > 6)
 		{
@@ -728,19 +655,12 @@ public class Utility
 			decimal = nanoSecond % 10;
 		}
 		String result = "";
-		try
-		{
-			DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-		    Date dateObject = new Date();
-		    result = dateFormat.format(dateObject)+"."+decimal;
-		}
-		catch(Exception e)
-		{
-			e.printStackTrace();
-		}
+		DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+	    Date dateObject = new Date();
+	    result = dateFormat.format(dateObject)+"."+decimal;
 		return result;
 	}
-	public static String now(int precission, String timezone)
+	public static String now(int precission, String timezone) throws NullPointerException, IllegalArgumentException
 	{
 		if(precission > 6)
 		{
@@ -777,17 +697,10 @@ public class Utility
 			decimal = nanoSecond % 10;
 		}
 		String result = "";
-		try
-		{
-			DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-			dateFormat.setTimeZone(TimeZone.getTimeZone(timezone));
-		    Date dateObject = new Date();
-		    result = dateFormat.format(dateObject)+"."+decimal;
-		}
-		catch(Exception e)
-		{
-			e.printStackTrace();
-		}
+		DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		dateFormat.setTimeZone(TimeZone.getTimeZone(timezone));
+	    Date dateObject = new Date();
+	    result = dateFormat.format(dateObject)+"."+decimal;
 		return result;
 	}
 	public static String now3()
@@ -806,20 +719,13 @@ public class Utility
 		}
 		return result;
 	}
-	public static String now6()
+	public static String now6()  throws NullPointerException, IllegalArgumentException
 	{
 		String result = "";
-		try
-		{
-			long microSecond = System.nanoTime() % 1000000;
-			DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-		    Date dateObject = new Date();
-		    result = dateFormat.format(dateObject)+"."+microSecond;
-		}
-		catch(Exception e)
-		{
-			e.printStackTrace();
-		}
+		long microSecond = System.nanoTime() % 1000000;
+		DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+	    Date dateObject = new Date();
+	    result = dateFormat.format(dateObject)+"."+microSecond;
 		return result;
 	}
 	/**
@@ -827,35 +733,21 @@ public class Utility
 	 * @param format Time format
 	 * @return Current time with specified format
 	 */
-	public static String now(String format)
+	public static String now(String format) throws NullPointerException, IllegalArgumentException
 	{
 		String result = "";
-		try
-		{
-			DateFormat dateFormat = new SimpleDateFormat(format);
-		    Date dateObject = new Date();
-		    result = dateFormat.format(dateObject);
-		}
-		catch(Exception e)
-		{
-			e.printStackTrace();
-		}
+		DateFormat dateFormat = new SimpleDateFormat(format);
+	    Date dateObject = new Date();
+	    result = dateFormat.format(dateObject);
 		return result;
 	}
-	public static String now(String format, String timezone)
+	public static String now(String format, String timezone) throws NullPointerException, IllegalArgumentException
 	{
 		String result = "";
-		try
-		{
-			DateFormat dateFormat = new SimpleDateFormat(format);
-			dateFormat.setTimeZone(TimeZone.getTimeZone(timezone));
-		    Date dateObject = new Date();
-		    result = dateFormat.format(dateObject);
-		}
-		catch(Exception e)
-		{
-			e.printStackTrace();
-		}
+		DateFormat dateFormat = new SimpleDateFormat(format);
+		dateFormat.setTimeZone(TimeZone.getTimeZone(timezone));
+	    Date dateObject = new Date();
+	    result = dateFormat.format(dateObject);
 		return result;
 	}
 	public static long unixTime()
